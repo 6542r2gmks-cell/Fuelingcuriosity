@@ -6326,3 +6326,171 @@ button,
   }
 }
 }
+/* =========================================
+   HOMEPAGE ENHANCEMENTS
+========================================= */
+
+/* Review badge in hero */
+.review-badge {
+  display: inline-block;
+  margin: 0 0 16px 0;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: #fff7e6;
+  color: var(--color-navy);
+  font-weight: 800;
+  border: 1px solid #f1d08a;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  letter-spacing: 0.2px;
+}
+
+/* Slightly stronger hero paragraph */
+.header p {
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Review section cards */
+.review-grid {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+.review-card {
+  background: var(--color-white);
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--color-gray-200);
+  flex: 1;
+  min-width: 260px;
+  max-width: 360px;
+  text-align: left;
+  position: relative;
+}
+
+.review-card::before {
+  content: "“";
+  position: absolute;
+  top: 8px;
+  left: 14px;
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--color-gray-200);
+  font-weight: 900;
+}
+
+.review-stars {
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+  color: var(--color-orange-dark);
+  font-weight: 700;
+}
+
+.review-card p {
+  margin: 0;
+  color: var(--color-gray-700);
+}
+
+.review-card--featured {
+  border-top: 4px solid var(--color-orange);
+}
+
+/* Who it's for / audience cards */
+.audience-section .feature-box {
+  border-top: 4px solid var(--color-teal);
+}
+
+/* Refinery journey row */
+.journey-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+
+.journey-step {
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-200);
+  border-radius: 999px;
+  padding: 10px 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.journey-arrow {
+  font-size: 1.4rem;
+  color: var(--color-orange);
+  font-weight: 900;
+}
+
+/* Stronger action-box spacing for homepage */
+.action-box p {
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Make CTA stack feel intentional */
+.homepage-cta-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+/* Email form polish */
+.email-form-note--strong {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-navy);
+  margin-bottom: 12px;
+}
+
+/* Optional helper text under CTA buttons */
+.cta-helper {
+  margin-top: 10px;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+
+/* Better spacing on feature sections */
+.section-intro {
+  max-width: 720px;
+  margin: 0 auto 24px auto;
+  text-align: center;
+}
+
+/* Small responsive tweaks */
+@media (max-width: 768px) {
+  .review-badge {
+    font-size: 0.95rem;
+    padding: 9px 14px;
+  }
+
+  .review-card {
+    min-width: 100%;
+  }
+
+  .journey-row {
+    gap: 10px;
+    font-size: 1rem;
+  }
+
+  .journey-arrow {
+    display: none;
+  }
+
+  .journey-step {
+    width: 100%;
+    text-align: center;
+  }
+}
