@@ -221,7 +221,8 @@ button:focus:not(:focus-visible),
 .button-group {
   display: flex;
   justify-content: center;
-  gap: 20px;
+  align-items: flex-start;
+  gap: 28px;
   margin-top: 25px;
   flex-wrap: wrap;
 }
@@ -6330,11 +6331,10 @@ button,
    HOMEPAGE ENHANCEMENTS
 ========================================= */
 
-/* Review badge in hero */
 .review-badge {
   display: inline-block;
-  margin: 0 0 16px 0;
-  padding: 10px 16px;
+  margin: 0 auto 20px auto;
+  padding: 10px 18px;
   border-radius: 999px;
   background: #fff7e6;
   color: var(--color-navy);
@@ -6344,31 +6344,88 @@ button,
   letter-spacing: 0.2px;
 }
 
-/* Slightly stronger hero paragraph */
+.header h1 {
+  margin-top: 10px;
+  margin-bottom: 14px;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+}
+
 .header p {
   max-width: 760px;
   margin-left: auto;
   margin-right: auto;
+  font-size: 1.15rem;
 }
 
-/* Review section cards */
-.review-grid {
-  display: flex;
-  gap: 24px;
+.button-group > a {
+  flex: 0 0 auto;
+}
+
+.btn.btn-primary {
+  min-width: 280px;
+  min-height: 64px;
+  align-self: center;
+}
+
+.play-game-cta {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  text-decoration: none;
+}
+
+.play-game-thumb {
+  width: 320px;
+  max-width: 90vw;
+  height: auto;
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(26, 54, 93, 0.28);
+  transition: transform 0.18s ease;
+}
+
+.play-game-btn {
+  min-width: 320px;
   justify-content: center;
-  flex-wrap: wrap;
+}
+
+.play-game-cta:hover .play-game-thumb {
+  transform: scale(1.03);
+}
+
+.cta-helper {
+  margin-top: 18px;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+
+.email-form-note--strong {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-navy);
+  margin-bottom: 6px;
+}
+
+.section-intro {
+  max-width: 760px;
+  margin: 0 auto 26px auto;
+  text-align: center;
+}
+
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
   margin-top: 28px;
 }
 
 .review-card {
   background: var(--color-white);
-  padding: 24px;
+  padding: 28px 24px 24px;
   border-radius: var(--radius-lg);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
   border: 1px solid var(--color-gray-200);
-  flex: 1;
-  min-width: 260px;
-  max-width: 360px;
   text-align: left;
   position: relative;
 }
@@ -6384,9 +6441,13 @@ button,
   font-weight: 900;
 }
 
+.review-card--featured {
+  border-top: 4px solid var(--color-orange);
+}
+
 .review-stars {
   font-size: 1.1rem;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   color: var(--color-orange-dark);
   font-weight: 700;
 }
@@ -6396,101 +6457,77 @@ button,
   color: var(--color-gray-700);
 }
 
-.review-card--featured {
-  border-top: 4px solid var(--color-orange);
+.review-card p + p {
+  margin-top: 14px;
 }
 
-/* Who it's for / audience cards */
-.audience-section .feature-box {
-  border-top: 4px solid var(--color-teal);
-}
-
-/* Refinery journey row */
 .journey-row {
   display: flex;
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 10px;
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--color-navy);
+  gap: 14px;
+  margin-top: 16px;
 }
 
 .journey-step {
   background: var(--color-white);
   border: 1px solid var(--color-gray-200);
   border-radius: 999px;
-  padding: 10px 16px;
+  padding: 10px 18px;
   box-shadow: var(--shadow-card);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-navy);
+  white-space: nowrap;
 }
 
 .journey-arrow {
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   color: var(--color-orange);
   font-weight: 900;
+  line-height: 1;
 }
 
-/* Stronger action-box spacing for homepage */
-.action-box p {
-  max-width: 760px;
-  margin-left: auto;
-  margin-right: auto;
+.audience-section .feature-box {
+  border-top: 4px solid var(--color-teal);
 }
 
-/* Make CTA stack feel intentional */
-.homepage-cta-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
+@media (max-width: 900px) {
+  .review-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
-/* Email form polish */
-.email-form-note--strong {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--color-navy);
-  margin-bottom: 12px;
-}
-
-/* Optional helper text under CTA buttons */
-.cta-helper {
-  margin-top: 10px;
-  font-weight: 700;
-  color: var(--color-navy);
-}
-
-/* Better spacing on feature sections */
-.section-intro {
-  max-width: 720px;
-  margin: 0 auto 24px auto;
-  text-align: center;
-}
-
-/* Small responsive tweaks */
 @media (max-width: 768px) {
-  .review-badge {
-    font-size: 0.95rem;
-    padding: 9px 14px;
+  .button-group {
+    flex-direction: column;
+    align-items: center;
   }
 
-  .review-card {
-    min-width: 100%;
+  .btn.btn-primary,
+  .play-game-btn {
+    width: 100%;
+    max-width: 340px;
+    min-width: 0;
   }
 
-  .journey-row {
-    gap: 10px;
-    font-size: 1rem;
+  .play-game-thumb {
+    width: 100%;
+    max-width: 340px;
   }
 
   .journey-arrow {
     display: none;
   }
 
+  .journey-row {
+    flex-direction: column;
+  }
+
   .journey-step {
     width: 100%;
+    max-width: 320px;
     text-align: center;
   }
 }
