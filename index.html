@@ -114,15 +114,25 @@
         <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;" title="Form submission target"></iframe>
 
         <form action="https://fuelingcuriosity.us2.list-manage.com/subscribe/post?u=02e6b77d4f08f66dcd6e46354&amp;id=a5e67c4b9a&amp;f_id=003d4ae0f0" method="POST" target="hidden_iframe" onsubmit="handleEmailSubmit()" style="margin-top: 20px;">
-            <p class="email-form-note">Want the bonus coloring pages? Drop your email below!</p>
+        
+            <p class="email-form-note email-form-note--strong">Want the free STEM activity pack?</p>
+        
+            <p class="email-form-note">Get printable refinery coloring pages, vocabulary, discussion prompts, and a simple classroom activity.</p>
+        
             <div class="email-form-row">
-                <input type="email" name="EMAIL" placeholder="Enter your email" required class="email-input" aria-label="Email address for coloring pages download">
-                <!-- Honeypot anti-spam field -->
+        
+                <input type="email" name="EMAIL" placeholder="Enter your email" required class="email-input" aria-label="Email address for free STEM activity pack">
+        
                 <div class="honeypot" aria-hidden="true">
+        
                     <input type="text" name="b_02e6b77d4f08f66dcd6e46354_a5e67c4b9a" tabindex="-1" value="">
+        
                 </div>
-                <button type="submit" id="download-submit-btn" class="btn btn-secondary">🖍️ Download Pages</button>
+        
+                <button type="submit" id="download-submit-btn" class="btn btn-secondary">📥 Get Free Activity Pack</button>
+        
             </div>
+        
         </form>
     </section>
 
@@ -208,13 +218,13 @@
 <script>
     function handleEmailSubmit() {
         // 1. Open the PDF immediately
-        window.open('refinery-coloring-book.pdf', '_blank');
+        window.open('fueling-curiosity-stem-activity-pack.pdf', '_blank');
 
         // 2. Track conversion in GA4
         if (typeof gtag === 'function') {
             gtag('event', 'generate_lead', {
                 'event_category': 'email_signup',
-                'event_label': 'Coloring Pages Download'
+                'event_label': 'STEM Activity Pack Download'
             });
         }
 
