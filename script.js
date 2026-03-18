@@ -3913,8 +3913,8 @@ const JET_BATCH_POOL = [
     // bad batches — explicitly defined for feedback
     { id: 7, good: false, flash: 90, freeze: -48, sulfur: 800, density: 0.796, smoke: 28, failSpec: 'flash', failMsg: 'Flash point is too low — extreme fire hazard during handling.' },
     { id: 8, good: false, flash: 115, freeze: -25, sulfur: 800, density: 0.796, smoke: 28, failSpec: 'freeze', failMsg: 'Freeze point too warm — fuel would gel in aircraft tanks at altitude.' },
-    { id: 9, good: false, flash: 105, freeze: -45, sulfur: 3400, density: 0.796, smoke: 28, failSpec: 'sulfur', failMsg: 'Sulfur exceeds 3000 ppm — causes turbine corrosion and violates emissions.' },
-    { id: 10, good: false, flash: 110, freeze: -42, sulfur: 900, density: 0.822, smoke: 28, failSpec: 'density', failMsg: 'Density out of range — fuel metering will be incorrect, risking engine stall.' },
+    { id: 9, good: false, flash: 105, freeze: -45, sulfur: 3400, density: 0.796, smoke: 28, failSpec: 'sulfur', failMsg: 'Sulfur exceeds 3000 ppm — the batch is out of release range and can affect equipment protection and combustion cleanliness.' },
+    { id: 10, good: false, flash: 110, freeze: -42, sulfur: 900, density: 0.822, smoke: 28, failSpec: 'density', failMsg: 'Density is out of range — the batch is out of release range and can affect fuel-system performance and planning accuracy.' },
     { id: 11, good: false, flash: 110, freeze: -42, sulfur: 900, density: 0.800, smoke: 18, failSpec: 'smoke', failMsg: 'Smoke point too low — combustion will be incomplete and produce excessive soot.' }
 ];
 

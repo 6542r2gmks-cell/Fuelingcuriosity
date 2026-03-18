@@ -2562,6 +2562,11 @@ PHASE 1: EXTRACTION
   margin-bottom: 15px;
 }
 
+.game-map-cta {
+  margin: 14px 0 10px;
+  text-align: center;
+}
+
 .finale-actions {
   display: flex;
   gap: 15px;

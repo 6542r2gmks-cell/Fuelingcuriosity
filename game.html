@@ -330,7 +330,7 @@
         <div class="tower-body">
             <button class="btn tower-btn top interactive-element" onclick="Game.chooseProduct('lpg')">LPG 💨</button>
             <button class="btn tower-btn middle interactive-element" onclick="Game.chooseProduct('gasoline')">Gasoline 🚗</button>
-            <button class="btn tower-btn bottom interactive-element" onclick="Game.chooseProduct('diesel')">ULSD 🚛</button>
+            <button class="btn tower-btn bottom interactive-element" onclick="Game.chooseProduct('diesel')">FCC Diesel 🚛</button>
             <div class="asphalt-label" style="background:#2d3748;">Slurry goes to sales!🛢️</div>
         </div>
         <div class="tower-base"></div>
@@ -400,15 +400,6 @@
     <p id="finale-message" class="finale-message"></p>
     <canvas id="confetti-canvas" aria-hidden="true"></canvas>
 
-    <div class="finale-cta">
-        <h3>Keep the learning going!</h3>
-        <p>Did you enjoy the demonstration? Discover more about how refineries power our world with the ABCs of Refining on Amazon.</p>
-        <!-- TODO: Replace placeholder-link with your actual Amazon listing URL -->
-        <a href="https://www.amazon.com/Fueling-Curiosity-Refining-Taylor-Bloomquist/dp/B0GP1XS7KW?crid=13FAKUKYF3W4S&dib=eyJ2IjoiMSJ9.DxFcy8J4xfsiF8dVYbkS1OoXX2gPXxtgJiRWf-Q9vseT5e2-ZEb84l_ef1e9zFwN.RDJXO29XpMaNEeBwLo0WhWmD_ueXTKw-GAWvQe1G9C0&dib_tag=se&keywords=fueling+curiosity&qid=1772510171&s=books&sprefix=fueling+curiosity%2Cstripbooks%2C177&sr=1-1&linkCode=ll2&tag=fuelingcurios-20&linkId=c157bd22829bccccc9f5436f8d6366b2&language=en_US&ref_=as_li_ss_tl" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="text-decoration: none;" onclick="if(typeof gtag==='function'){gtag('event','generate_lead',{'event_category':'conversion','event_label':'Game Finale Amazon Click'});}">📚 Buy the Book on Amazon</a>
-    </div>
-    <p class="footer-disclosure">
-        As an Amazon Associate, we earn from qualifying purchases. This website is intended for parents, educators, and industry professionals.
-    </p>
     <div class="finale-actions">
         <button class="btn interactive-element" onclick="Game.resetGame()">Play Again</button>
         <a href="index.html" class="btn btn-secondary interactive-element" style="text-decoration: none;">Back to Home</a>
@@ -647,10 +638,15 @@
             <strong id="v804-count">0 / 16</strong>
         </div>
     </div>
-    <p style="font-size:0.85rem;color:#555;margin:4px 0 8px;">Tap a unit to jump. Green = certified ✅</p>
-        <p style="font-size: 0.95rem; font-weight: bold; color: #2e7d32; margin: 0;">
-        Get Curiosity Certified for a discount on the book!
+    <div class="finale-cta game-map-cta">
+        <h3>Keep the learning going!</h3>
+        <p>Discover more about how refineries power our world with the ABCs of Refining on Amazon.</p>
+        <a href="https://www.amazon.com/Fueling-Curiosity-Refining-Taylor-Bloomquist/dp/B0GP1XS7KW?crid=13FAKUKYF3W4S&dib=eyJ2IjoiMSJ9.DxFcy8J4xfsiF8dVYbkS1OoXX2gPXxtgJiRWf-Q9vseT5e2-ZEb84l_ef1e9zFwN.RDJXO29XpMaNEeBwLo0WhWmD_ueXTKw-GAWvQe1G9C0&dib_tag=se&keywords=fueling+curiosity&qid=1772510171&s=books&sprefix=fueling+curiosity%2Cstripbooks%2C177&sr=1-1&linkCode=ll2&tag=fuelingcurios-20&linkId=c157bd22829bccccc9f5436f8d6366b2&language=en_US&ref_=as_li_ss_tl" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="text-decoration: none;" onclick="if(typeof gtag==='function'){gtag('event','generate_lead',{'event_category':'conversion','event_label':'Game Map Amazon Click'});}">📚 Get the Book on Amazon</a>
+    </div>
+    <p class="footer-disclosure">
+        As an Amazon Associate, we earn from qualifying purchases. This website is intended for parents, educators, and industry professionals.
     </p>
+    <p style="font-size:0.85rem;color:#555;margin:4px 0 8px;">Tap a unit to jump. Green = certified ✅</p>
     <div class="map-grid">
         <button data-unit="extraction" onclick="Game.mapJump('1')">Extraction</button>
         <button data-unit="desalter" onclick="Game.mapJump('desalter')">Desalter</button>
