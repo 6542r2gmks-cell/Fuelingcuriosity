@@ -57,6 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
         gasProduct: '87summer',
         gasVolumes: { naphtha: 0, butane: 0, reformate: 0, alkylate: 0, fccgasoline: 0 },
         gasGradesCompleted: [],
+        gasolineIntroShown: false,
+        jetIntroShown: false,
         completedUnits: [],
         jetBatches: [],
         jetBatchIndex: 0,
@@ -68,7 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
         ulsdDoses: {},
         ulsdTimerInterval: null,
         uldsdTimeLeft: 60,
-        pipeGameState: { timer: null, timeLeft: 45, spotsClamped: 0, activeTool: 'scanner' }
+        pipeGameState: { timer: null, timeLeft: 45, spotsClamped: 0, activeTool: 'scanner' },
+        sruBestScore: 0,
+        sruBestTime: 0,
+        sruBestRecovered: 0
     };
     let desalterTimeouts = [];
     let sulfurSetupTimeout = null;
@@ -77,6 +82,22 @@ document.addEventListener('DOMContentLoaded', () => {
     let vacSetupToken = 0;
     let vacTimeouts = [];
     let vacIntervals = [];
+    const DESALTER_TUNING = Object.freeze({
+        minSpawnMs: 300,
+        maxSpawnMs: 900,
+        fastChance: 0.25,
+        allowUltraFast: false
+    });
+    const HYDROTREATING_TUNING = Object.freeze({
+        initialSpeedScale: 3.2,
+        initialSpeedMin: 2.8,
+        initialSpeedMax: 5.6,
+        speedUpMultiplier: 1.08,
+        maxSpeedScale: 5.4,
+        maxSpeedMin: 4.6,
+        maxSpeedMax: 6.2,
+        antiStuckForce: 0.004
+    });
 
     /* =========================================
        PHYSICS ENGINE (Hybrid DOM-Sync)
@@ -84,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const { Engine, Runner, World, Bodies, Composite, Events, Body } = Matter;
     const physicsEngine = Engine.create();
     const physicsRunner = Runner.create();
-    const PHYSICS_IDLE_PHASES = new Set(['0', '1', '2', '5', 'transport', 'finale', 'pump-swap', 'pipe-xray']);
+    const PHYSICS_IDLE_PHASES = new Set(['0', '1', '2', '5', 'transport', 'finale', 'pump-swap', 'pipe-xray', 'sru']);
     let physicsDomSyncEnabled = true;
     function syncPhysicsForPhase(phaseId) {
         physicsDomSyncEnabled = !PHYSICS_IDLE_PHASES.has(String(phaseId));
@@ -180,7 +201,10 @@ document.addEventListener('DOMContentLoaded', () => {
             product: state.product,
             mapUnlocked: gameMap && !gameMap.classList.contains('hidden'),
             completedUnits: state.completedUnits,
-            gasGradesCompleted: state.gasGradesCompleted
+            gasGradesCompleted: state.gasGradesCompleted,
+            sruBestScore: state.sruBestScore,
+            sruBestTime: state.sruBestTime,
+            sruBestRecovered: state.sruBestRecovered
         };
         localStorage.setItem('refineryRunProgress', JSON.stringify(progress));
     }
@@ -244,8 +268,10 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'gasoline', label: 'Gasoline Blending & Certification' },
         { id: 'jetfuel', label: 'Jet Fuel Inspection & Certification' },
         { id: 'ulsd', label: 'ULSD Treatment & Additives' },
-        { id: 'logistics', label: 'Product Logistics & Delivery' }
+        { id: 'logistics', label: 'Product Logistics & Delivery' },
+        { id: 'sru', label: 'Sulfur Recovery Unit (SRU)' }
     ];
+    const V804_TOTAL_UNITS = V804_UNITS.length;
     function markUnitComplete(unitId) {
         if (!state.completedUnits.includes(unitId)) {
             state.completedUnits.push(unitId);
@@ -261,10 +287,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const bar = getEl('v804-progress-bar');
         const countEl = getEl('v804-count');
         const form = getEl('v804-form');
-        if (bar) bar.max = 15;
+        if (bar) bar.max = V804_TOTAL_UNITS;
         if (bar) bar.value = count;
-        if (countEl) countEl.textContent = count + ' / 15';
-        if (count >= 15 && form) {
+        if (countEl) countEl.textContent = `${count} / ${V804_TOTAL_UNITS}`;
+        if (count >= V804_TOTAL_UNITS && form) {
             form.classList.remove('hidden');
             track('unlock_achievement', { achievement_id: 'V804_Eligible' });
         }
@@ -406,13 +432,220 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentFunFactDismiss = null;
     let funFactSequence = 0;
 
-    function getBlendingFunFact() {
+    function getBlendingFunFact(product = state.product) {
         const facts = {
             gasoline: { emoji: '⛽', text: "Refineries run lab tests on every gasoline blend before it ships. Octane, Reid Vapor Pressure, and distillation curves are all checked against regulated seasonal specs. A $0.10/gallon optimization decision at the blender can translate to millions annually, so refineries target <0.3 giveaway. Not shown, 10% Ethanol boosts octane by ~3.5 and RVP by 1 PSI significantly changing recipes." },
-            jetfuel:  { emoji: '✈️', text: "Jet fuel lab certification is among the most rigorous in the industry. Flash point, freeze point, thermal stability, and a density check are all required before any batch is cleared for aviation use. One off-spec batch can contaminate an entire airport tank farm." },
+            jetfuel:  { emoji: '✈️', text: "Jet fuel lab certification is among the most rigorous in the industry. Flash point, freeze point, sulfur content, density, and smoke point are all checked before any batch is cleared for aviation use. One off-spec batch can contaminate an entire airport tank farm." },
             diesel:   { emoji: '🛢️', text: "Ultra-Low Sulfur Diesel is treated with additives at the ppm level — that's parts per million, roughly equivalent to a few drops in a swimming pool. Getting the dosage exactly right is both a quality and a cost issue." }
         };
-        return facts[state.product] || facts.gasoline;
+        return facts[product] || facts.gasoline;
+    }
+
+    const FACT_BROWSER_LOGISTICS_ENTRIES = Object.freeze([
+        {
+            key: 'logistics_truck',
+            emoji: '🚛',
+            text: 'Tanker trucks deliver fuel directly to local gas stations and businesses. Each truck carries about 9,000 gallons, enough to fuel roughly 600 cars.'
+        },
+        {
+            key: 'logistics_pipeline',
+            emoji: '🟤',
+            text: 'Pipelines move huge amounts of fuel underground across the country. They can carry millions of gallons per day at about 3–5 mph and operate continuously in almost any weather.'
+        },
+        {
+            key: 'logistics_barge',
+            emoji: '🛳️',
+            text: 'River barges move fuel efficiently through inland waterways. A single barge can hold about 1 million gallons, which is roughly the same as 100 tanker trucks.'
+        },
+        {
+            key: 'logistics_railcar',
+            emoji: '🚂',
+            text: 'Rail tank cars move fuel over long distances where pipelines do not reach. A single rail tank car carries about 30,000 gallons, more than three tanker trucks.'
+        },
+        {
+            key: 'logistics_ship',
+            emoji: '🚢',
+            text: 'Ocean product tankers move massive fuel volumes between ports. A typical product ship can hold more than 10 million gallons, enough to fuel about 1 million cars.'
+        }
+    ]);
+
+    const FACT_BROWSER_ENTRIES = Object.freeze([
+        { key: 'extraction', ...funFacts.extraction },
+        { key: 'desalter', ...funFacts.desalter },
+        { key: 'distillation_lpg', ...funFacts.distillation_lpg },
+        { key: 'distillation_naphtha', ...funFacts.distillation_naphtha },
+        { key: 'distillation_jetfuel', ...funFacts.distillation_jetfuel },
+        { key: 'distillation_diesel', ...funFacts.distillation_diesel },
+        { key: 'distillation_resid', ...funFacts.distillation_resid },
+        { key: 'sulfur', ...funFacts.sulfur },
+        { key: 'pipe_xray', ...funFacts.pipe_xray },
+        { key: 'pump_swap', ...funFacts.pump_swap },
+        { key: 'alky', ...funFacts.alky },
+        { key: 'reformer', ...funFacts.reformer },
+        { key: 'vac', ...funFacts.vac },
+        { key: 'coker', ...funFacts.coker },
+        { key: 'fcc_gasoline', ...funFacts.fcc_gasoline },
+        { key: 'fcc', ...funFacts.fcc },
+        { key: 'blending_gasoline', ...getBlendingFunFact('gasoline') },
+        { key: 'blending_jetfuel', ...getBlendingFunFact('jetfuel') },
+        { key: 'blending_diesel', ...getBlendingFunFact('diesel') }
+    ]);
+    const FINALE_FACT_BROWSER_ENTRIES = Object.freeze([
+        {
+            key: 'logistics_summary',
+            emoji: '🌎',
+            text: 'The United States uses about 630 million gallons of fuel every day, so refineries and fuel distribution systems have to work constantly to keep homes, farms, factories, trucks, ships, and planes supplied.'
+        },
+        {
+            key: 'finale_supply_chain',
+            emoji: '🔗',
+            text: 'No single transport mode does it all. Pipelines, tanker trucks, railcars, barges, and ocean tankers work together so finished fuels can reach consumers safely and reliably.'
+        }
+    ]);
+
+    function getULSDFactBrowserEntries() {
+        if (typeof ULSD_TREATMENT_POOL === 'undefined') return [];
+        return ULSD_TREATMENT_POOL.map(treatment => ({
+            key: `ulsd_${treatment.id}`,
+            emoji: treatment.emoji,
+            text: `${treatment.name} is dosed into ULSD in tiny ppm amounts. ${treatment.hint}. The game target is ${treatment.target} ${treatment.unit}.`
+        }));
+    }
+
+    function getJetFactBrowserEntries() {
+        if (typeof JET_LIMITS === 'undefined') return [];
+        const entries = [{
+            key: 'jet_certification',
+            emoji: '✈️',
+            text: 'Jet A certification requires multiple checks before any cargo tank is approved. Flash point, freeze point, sulfur content, density, and smoke point all help show whether the fuel is safe to handle and clean enough to burn in turbine equipment.'
+        }];
+        const jetFactText = {
+            flash: 'Flash point measures how hot the fuel must get before it gives off enough vapor to ignite. Jet fuel needs a high flash point so it is safer to store, transfer, and handle on the ground.',
+            freeze: 'Freeze point tells you how cold the fuel can get before wax crystals start forming. Jet fuel has to stay fluid at high altitude, where outside air can drop well below -40°F.',
+            sulfur: 'Sulfur content affects corrosion, emissions, and overall fuel cleanliness. Lower sulfur is generally better for both equipment protection and air quality.',
+            density: 'Density affects how much mass and energy fit into a given tank volume. If density drifts out of range, flight planning and fuel system performance can both be affected.',
+            smoke: 'Smoke point is a quick measure of how cleanly the fuel burns. A higher smoke point means less soot formation in the flame, which helps protect turbine hot sections from carbon deposits.'
+        };
+        Object.entries(JET_LIMITS).forEach(([key, limit]) => {
+            entries.push({
+                key: `jet_${key}`,
+                emoji: limit.emoji,
+                text: `${limit.label} is one of the Jet A release checks. ${jetFactText[key]} In the game, on-spec fuel stays within ${limit.range}.`
+            });
+        });
+        return entries;
+    }
+
+    function getGasolineFactBrowserEntries() {
+        if (typeof GAS_PRODUCTS === 'undefined' || typeof GAS_COMPONENTS === 'undefined') return [];
+        const gradeEntries = Object.entries(GAS_PRODUCTS).map(([key, product]) => ({
+            key: `gas_grade_${key}`,
+            emoji: '⛽',
+            text: `${product.label} gasoline must reach at least ${product.minOctane} octane while staying at or below ${product.maxRVP} psi RVP. ${product.maxRVP <= 9 ? 'Summer gasoline has a tighter vapor-pressure limit to control evaporative emissions.' : 'Winter gasoline allows a higher vapor-pressure limit to improve cold-start performance.'}`
+        }));
+        const componentEntries = Object.entries(GAS_COMPONENTS).map(([key, component]) => ({
+            key: `gas_component_${key}`,
+            emoji: '🧪',
+            text: `${component.label} is a ${component.costLabel} blend component. ${component.desc}. In the game it contributes ${component.octane} octane and ${component.rvp} psi RVP.`
+        }));
+        return [...gradeEntries, ...componentEntries];
+    }
+
+    function getFactBrowserEntries() {
+        return [
+            ...FACT_BROWSER_ENTRIES,
+            ...getULSDFactBrowserEntries(),
+            ...getJetFactBrowserEntries(),
+            ...getGasolineFactBrowserEntries(),
+            ...FACT_BROWSER_LOGISTICS_ENTRIES,
+            ...FINALE_FACT_BROWSER_ENTRIES
+        ];
+    }
+    let factBrowserState = {
+        active: false,
+        index: 0
+    };
+
+    function setFunFactOverlayMode(mode) {
+        const overlay = getEl('fun-fact-overlay');
+        const controls = getEl('fun-fact-controls');
+        const counter = getEl('fun-fact-counter');
+        const tapHint = getEl('fun-fact-tap');
+        const isBrowser = mode === 'browser';
+
+        if (overlay) {
+            overlay.classList.toggle('is-browser', isBrowser);
+            overlay.style.cursor = isBrowser ? 'default' : 'pointer';
+        }
+        if (controls) controls.classList.toggle('hidden', !isBrowser);
+        if (counter) counter.classList.toggle('hidden', !isBrowser);
+        if (tapHint) tapHint.classList.toggle('hidden', isBrowser);
+    }
+
+    function renderFunFactOverlay(fact, options = {}) {
+        const overlay = getEl('fun-fact-overlay');
+        const labelEl = getEl('fun-fact-label');
+        const emojiEl = getEl('fun-fact-emoji');
+        const textEl = getEl('fun-fact-text');
+        const counterEl = getEl('fun-fact-counter');
+        const tapHint = getEl('fun-fact-tap');
+        const prevBtn = getEl('fun-fact-prev-btn');
+        const nextBtn = getEl('fun-fact-next-btn');
+
+        if (!overlay || !emojiEl || !textEl) return null;
+
+        setFunFactOverlayMode(options.mode || 'tap');
+        if (labelEl) labelEl.textContent = options.label || 'Did You Know?';
+        emojiEl.innerText = fact.emoji;
+        textEl.innerText = fact.text;
+        if (counterEl) counterEl.textContent = options.counter || '';
+        if (tapHint) tapHint.textContent = options.tapText || 'Tap anywhere to continue';
+        if (prevBtn) prevBtn.disabled = Boolean(options.disablePrev);
+        if (nextBtn) nextBtn.disabled = Boolean(options.disableNext);
+        overlay.classList.add('active');
+        return overlay;
+    }
+
+    function showFactBrowserEntry(index) {
+        const facts = getFactBrowserEntries();
+        if (!facts.length) return;
+        const safeIndex = Math.max(0, Math.min(index, facts.length - 1));
+        factBrowserState.active = true;
+        factBrowserState.index = safeIndex;
+        const entry = facts[safeIndex];
+        renderFunFactOverlay(entry, {
+            label: 'Just the Facts',
+            mode: 'browser',
+            counter: `${safeIndex + 1} / ${facts.length}`,
+            disablePrev: safeIndex === 0,
+            disableNext: safeIndex === facts.length - 1
+        });
+    }
+
+    function openFactsBrowser(startIndex = 0) {
+        cancelFunFactFlow({ hideOverlay: false });
+        showFactBrowserEntry(startIndex);
+        scrollGameIntoView();
+    }
+
+    function nextFact() {
+        if (!factBrowserState.active) return;
+        showFactBrowserEntry(factBrowserState.index + 1);
+    }
+
+    function previousFact() {
+        if (!factBrowserState.active) return;
+        showFactBrowserEntry(factBrowserState.index - 1);
+    }
+
+    function closeFactsBrowser() {
+        const wasActive = factBrowserState.active;
+        cancelFunFactFlow();
+        if (wasActive && activePhaseId !== '0') {
+            showPhase('0', { skipSave: true, skipEnter: true });
+            return;
+        }
+        scrollGameIntoView();
     }
 
     function cancelFunFactFlow(options = {}) {
@@ -431,6 +664,8 @@ document.addEventListener('DOMContentLoaded', () => {
             overlay.removeEventListener('pointerdown', currentFunFactDismiss);
             currentFunFactDismiss = null;
         }
+        factBrowserState.active = false;
+        setFunFactOverlayMode('tap');
         if (hideOverlay && overlay) {
             overlay.classList.remove('active');
         }
@@ -441,19 +676,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const fact = funFacts[factKey];
         if (!fact) { if (callback) callback(); return; }
 
-        const overlay = getEl('fun-fact-overlay');
-        const emojiEl = getEl('fun-fact-emoji');
-        const textEl = getEl('fun-fact-text');
-        if (!overlay || !emojiEl || !textEl) { if (callback) callback(); return; }
-
         cancelFunFactFlow();
         const funFactToken = funFactSequence;
+        const overlay = renderFunFactOverlay(fact, {
+            label: 'Did You Know?',
+            mode: 'tap',
+            tapText: 'Tap anywhere to continue'
+        });
+        if (!overlay) { if (callback) callback(); return; }
 
-        emojiEl.innerText = fact.emoji;
-        textEl.innerText = fact.text;
-        overlay.classList.add('active');
-
-        // Auto-dismiss after 60 seconds OR tap to dismiss
         let dismissed = false;
         function dismiss() {
             if (dismissed) return;
@@ -520,7 +751,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillRect(p.x, p.y, p.w, p.h);
     });
     const finale = getEl('finale');
-    if (active && finale && finale.classList.contains('active')) {
+    const confettiAllowed = (finale && finale.classList.contains('active')) || activePhaseId === 'sru';
+    if (active && confettiAllowed) {
         confettiRAF = requestAnimationFrame(draw);
     } else {
         confettiRAF = null;
@@ -672,6 +904,8 @@ function cleanupLabPhase() {
         clearInterval(state.ulsdTimerInterval);
         state.ulsdTimerInterval = null;
     }
+    state.gasolineIntroShown = false;
+    state.jetIntroShown = false;
     clearTimerCollection(typeof ulsdToteIntervals !== 'undefined' ? ulsdToteIntervals : null);
 }
 
@@ -718,6 +952,7 @@ const phaseLifecycle = {
             updateProductIcon();
         }
     },
+    'sru': { enter: setupSRU, exit: cleanupSRUPhase },
     'pipe-xray': { enter: setupPipeXray, exit: cleanupPipeXrayPhase },
     'pump-swap': {
         enter: () => {
@@ -810,6 +1045,8 @@ function showPhase(phaseId, options = {}) {
     }
 
     cancelFunFactFlow();
+    closeGasolineIntroCard();
+    closeJetIntroCard();
 
     phaseActivationToken += 1;
     const activationToken = phaseActivationToken;
@@ -1058,8 +1295,8 @@ function setupDesalter() {
 
     // 2. The Gameplay Loop (randomized spawn interval + 6s survive timer)
     function startGameplay() {
-        const minMs = 300; // fastest spawn
-        const maxMs = 900; // slowest spawn
+        const minMs = DESALTER_TUNING.minSpawnMs;
+        const maxMs = DESALTER_TUNING.maxSpawnMs;
 
         function scheduleNextSpawn() {
             if (isGameOver) return;
@@ -1098,7 +1335,7 @@ function setupDesalter() {
         desalterTimeouts.push(gameTimer);
     }
 
-    // 3. Spawning and Movement Logic (with speed tiers, ultra-fast excluded for oil)
+        // 3. Spawning and Movement Logic (normal + fast only)
     function spawnDrop() {
         if (isGameOver) return;
 
@@ -1112,24 +1349,14 @@ function setupDesalter() {
         else if (rand < 0.70) { drop.innerText = '🧂'; type = 'salt'; }
         else { drop.innerText = '⚫️'; type = 'oil'; }
 
-        // Randomize Drop Speed (fair for 6s round + your flowDiagonal distance)
-        // Ultra-fast applies only to salt/water so oil doesn't feel "cheap"
         const rSpeed = Math.random();
         let duration;
 
-        const allowUltra = (type !== 'oil');
-
-        if (allowUltra && rSpeed < 0.05) {
-            // 5% spike-fast (salt/water only) — slowed down for fairness
-            duration = 0.90 + Math.random() * 0.20; // 0.90s to 1.10s
-            drop.classList.add('ultra-fast');
-        } else if (rSpeed < 0.25) {
-            // next 20% fast
-            duration = 1.10 + Math.random() * 0.30; // 1.10s to 1.40s
+        if (rSpeed < DESALTER_TUNING.fastChance) {
+            duration = 1.10 + Math.random() * 0.30;
             drop.classList.add('fast');
         } else {
-            // 75% normal
-            duration = 1.35 + Math.random() * 0.95; // 1.35s to 2.30s
+            duration = 1.35 + Math.random() * 0.95;
         }
 
         drop.style.animationDuration = duration + 's';
@@ -1313,7 +1540,8 @@ function setupSulfurGame() {
             const s = Math.min(w / 220, h / 220);
 
             const sulfurBodies = [];
-            let currentSpeed = Math.max(3.5, Math.min(7.0, 4 * s));
+            const sulfurMaxSpeed = Math.max(HYDROTREATING_TUNING.maxSpeedMin, Math.min(HYDROTREATING_TUNING.maxSpeedMax, HYDROTREATING_TUNING.maxSpeedScale * s));
+            let currentSpeed = Math.max(HYDROTREATING_TUNING.initialSpeedMin, Math.min(HYDROTREATING_TUNING.initialSpeedMax, HYDROTREATING_TUNING.initialSpeedScale * s));
 
             for (let i = 0; i < 7; i++) {
                 const blobEl = document.createElement('div');
@@ -1355,14 +1583,15 @@ function setupSulfurGame() {
                     if (index > -1) sulfurBodies.splice(index, 1);
 
                     // SPEED UP REMAINING MOLECULES
-                    currentSpeed *= 1.15;
+                    currentSpeed = Math.min(currentSpeed * HYDROTREATING_TUNING.speedUpMultiplier, sulfurMaxSpeed);
 
                     sulfurBodies.forEach(b => {
                         const speed = Math.sqrt(b.velocity.x ** 2 + b.velocity.y ** 2);
                         if (speed > 0) {
+                            const nextSpeed = Math.min(currentSpeed, sulfurMaxSpeed);
                             Matter.Body.setVelocity(b, {
-                                x: (b.velocity.x / speed) * currentSpeed,
-                                y: (b.velocity.y / speed) * currentSpeed
+                                x: (b.velocity.x / speed) * nextSpeed,
+                                y: (b.velocity.y / speed) * nextSpeed
                             });
                         }
                     });
@@ -1393,8 +1622,13 @@ function setupSulfurGame() {
 
                 sulfurBodies.forEach(body => {
                     const speed = Math.sqrt(body.velocity.x ** 2 + body.velocity.y ** 2);
-                    if (speed < currentSpeed * 0.8) {
-                        const f = 0.005;
+                    if (speed > sulfurMaxSpeed) {
+                        Matter.Body.setVelocity(body, {
+                            x: (body.velocity.x / speed) * sulfurMaxSpeed,
+                            y: (body.velocity.y / speed) * sulfurMaxSpeed
+                        });
+                    } else if (speed < currentSpeed * 0.8) {
+                        const f = HYDROTREATING_TUNING.antiStuckForce;
                         Matter.Body.applyForce(body, body.position, {
                             x: (Math.random() - 0.5) * f,
                             y: (Math.random() - 0.5) * f
@@ -2773,7 +3007,7 @@ function setupCokerFrac() {
                 <div class="tower-body">
                     <button class="btn tower-btn top interactive-element" onclick="Game.chooseCokerProduct('lpg')">💨 Coker LPG</button>
                     <button class="btn tower-btn middle interactive-element" onclick="Game.chooseCokerProduct('naphtha')">🧪 Coker Naphtha (Gasoline)</button>
-                    <button class="btn tower-btn middle interactive-element" style="background: #3182ce;" onclick="Game.chooseCokerProduct('diesel')">🚛 Coker ULSD (Diesel)</button>
+                    <button class="btn tower-btn middle interactive-element" style="background: #3182ce;" onclick="Game.chooseCokerProduct('diesel')">🚛 Coker Diesel</button>
                     <button class="btn tower-btn bottom interactive-element" onclick="Game.chooseCokerProduct('gasoil')">🔥 Heavy Gas Oil (To FCC)</button>
                 </div>
                 <div class="tower-base" style="height: auto; padding: 12px; background: #1a202c; color: var(--color-gray-400); border-radius: 4px; margin-top: 8px; text-align: center; font-weight: bold; border: 2px solid #2d3748;">
@@ -3337,11 +3571,11 @@ function addDieselDrop() {
 
 /* ── Gasoline Blender Constants ── */
 const GAS_COMPONENTS = {
-    naphtha: { octane: 60, rvp: 4, color: '#d4a017', label: 'Naphtha', desc: 'Base stock, low octane' },
-    butane: { octane: 93, rvp: 50.0, color: '#5bc8f5', label: 'Butane', desc: 'Boosts octane, raises RVP fast' },
-    reformate: { octane: 100, rvp: 0, color: '#f4a261', label: 'Reformate', desc: 'High octane, low RVP' },
-    alkylate: { octane: 93, rvp: 4, color: '#90e0ef', label: 'Alkylate', desc: 'Clean, high octane' },
-    fccgasoline: { octane: 84, rvp: 7, color: '#e07b39', label: 'FCC Gas', desc: 'Base blendstock' }
+    naphtha: { octane: 60, rvp: 4, color: '#d4a017', label: 'Naphtha', desc: 'Base stock, low octane', costIndex: 1, costLabel: '$' },
+    butane: { octane: 93, rvp: 50.0, color: '#5bc8f5', label: 'Butane', desc: 'Boosts octane, raises RVP fast', costIndex: 1, costLabel: '$' },
+    reformate: { octane: 100, rvp: 0, color: '#f4a261', label: 'Reformate', desc: 'High octane, low RVP', costIndex: 4, costLabel: '$$$$' },
+    alkylate: { octane: 93, rvp: 4, color: '#90e0ef', label: 'Alkylate', desc: 'Clean, high octane', costIndex: 3, costLabel: '$$$' },
+    fccgasoline: { octane: 84, rvp: 7, color: '#e07b39', label: 'FCC Gas', desc: 'Base blendstock', costIndex: 2, costLabel: '$$' }
 };
 
 const GAS_PRODUCTS = {
@@ -3407,7 +3641,7 @@ function showGasRecipePopup() {
                 ${compRows}
             </div>
             <div class="recipe-result">
-                Expected → <strong>Octane ${recipe.octane}</strong> RON, <strong>RVP ${recipe.rvp}</strong> psi
+                Expected → <strong>Octane ${recipe.octane}</strong> OCT, <strong>RVP ${recipe.rvp}</strong> psi
             </div>
             <p class="recipe-tip">💡 ${recipe.tip}</p>
         </div>
@@ -3417,6 +3651,76 @@ function showGasRecipePopup() {
     overlay.addEventListener('click', e => {
         if (e.target === overlay || e.target.id === 'recipe-close-btn') overlay.remove();
     });
+}
+
+function showGasolineIntroCard() {
+    const existing = document.querySelector('.gasoline-intro-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'gasoline-intro-overlay';
+    overlay.innerHTML = `
+        <div class="gasoline-intro-card">
+            <div class="gasoline-intro-kicker">Gasoline Blend Basics</div>
+            <h3>Octane, RVP, and Cost</h3>
+            <p>Blend to spec by keeping <strong>Octane</strong> high enough for knock resistance and <strong>RVP</strong> low enough for the season. Summer gasoline needs tighter vapor-pressure control than winter.</p>
+            <div class="gasoline-intro-costs">
+                <span><strong>Butane</strong> $</span>
+                <span><strong>Naphtha</strong> $</span>
+                <span><strong>FCC Gas</strong> $$</span>
+                <span><strong>Alkylate</strong> $$$</span>
+                <span><strong>Reformate</strong> $$$$</span>
+            </div>
+            <p class="gasoline-intro-note">Cheaper components help economics, but only if the blend still passes Octane and RVP.</p>
+            <button class="btn interactive-element" id="gasoline-intro-start">Start Blending</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay || event.target.id === 'gasoline-intro-start') {
+            overlay.remove();
+        }
+    });
+}
+
+function closeGasolineIntroCard() {
+    const overlay = document.querySelector('.gasoline-intro-overlay');
+    if (overlay) overlay.remove();
+}
+
+function showJetIntroCard() {
+    const existing = document.querySelector('.jet-intro-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'gasoline-intro-overlay jet-intro-overlay';
+    overlay.innerHTML = `
+        <div class="gasoline-intro-card jet-intro-card">
+            <div class="gasoline-intro-kicker">Jet Release Basics</div>
+            <h3>Approve Only On-Spec Fuel</h3>
+            <p>Each Jet A certificate checks <strong>flash point</strong>, <strong>freeze point</strong>, <strong>sulfur</strong>, <strong>density</strong>, and <strong>smoke point</strong> before fuel reaches the cargo tank.</p>
+            <div class="gasoline-intro-costs">
+                <span><strong>Flash Point</strong> safer ground handling</span>
+                <span><strong>Freeze Point</strong> stays fluid at altitude</span>
+                <span><strong>Sulfur</strong> cleaner, less corrosive fuel</span>
+                <span><strong>Density</strong> consistent energy per tank volume</span>
+                <span><strong>Smoke Point</strong> cleaner turbine flame</span>
+            </div>
+            <p class="gasoline-intro-note">Reject any off-spec batch before it enters cargo. One bad approval can contaminate the whole tank.</p>
+            <button class="btn interactive-element" id="jet-intro-start">Start Inspecting</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay || event.target.id === 'jet-intro-start') {
+            overlay.remove();
+        }
+    });
+}
+
+function closeJetIntroCard() {
+    const overlay = document.querySelector('.jet-intro-overlay');
+    if (overlay) overlay.remove();
 }
 
 
@@ -3433,14 +3737,44 @@ function calculateBlend(volumes) {
     return { octane: Math.round(octane * 10) / 10, rvp: Math.round(rvp * 10) / 10, total };
 }
 
+function calculateBlendCost(volumes) {
+    const keys = Object.keys(volumes);
+    const total = keys.reduce((sum, key) => sum + volumes[key], 0);
+    if (total === 0) {
+        return { total: 0, average: 0, dollars: '--', label: 'No blend', summary: 'No blend yet' };
+    }
+
+    let weightedCost = 0;
+    keys.forEach(key => {
+        const component = GAS_COMPONENTS[key];
+        weightedCost += (component.costIndex || 0) * volumes[key];
+    });
+
+    const average = weightedCost / total;
+    const roundedTier = Math.max(1, Math.min(4, Math.round(average)));
+    const dollars = '$'.repeat(roundedTier);
+    let label = 'Moderate';
+    if (average <= 1.7) label = 'Cheap';
+    else if (average >= 2.9) label = 'Expensive';
+
+    return {
+        total,
+        average: Math.round(average * 100) / 100,
+        dollars,
+        label,
+        summary: `${label} ${dollars}`
+    };
+}
+
 function evaluateGasBlend(volumes, productKey) {
     const spec = GAS_PRODUCTS[productKey];
     const blend = calculateBlend(volumes);
+    const cost = calculateBlendCost(volumes);
     if (blend.total === 0) return { grade: 'fail', msg: 'No components blended!', blend };
     if (blend.octane < spec.minOctane) {
         return {
             grade: 'fail', blend,
-            msg: `Under octane spec — ${blend.octane} RON vs ${spec.minOctane} min. Selling this would cause engine knocking and EPA fines. Try adding more Reformate or less Naphtha!`
+            msg: `Under octane spec — ${blend.octane} OCT vs ${spec.minOctane} min. Selling this would cause engine knocking and EPA fines. Try adding more Reformate or less Naphtha!`
         };
     }
     if (blend.rvp > spec.maxRVP) {
@@ -3453,18 +3787,19 @@ function evaluateGasBlend(volumes, productKey) {
     const rvpHeadroom = spec.maxRVP - blend.rvp;
     if (octaneGiveaway > 1.5 || rvpHeadroom > 1.5) {
         return {
-            grade: 'warning', blend,
-            msg: `Passes but you left money on the table — ${octaneGiveaway.toFixed(1)} octane points and ${rvpHeadroom.toFixed(1)} psi RVP unused as headroom. Proceed or try for a tighter blend?`
+            grade: 'warning', blend, cost,
+            msg: `Passes but you left money on the table — ${octaneGiveaway.toFixed(1)} octane points and ${rvpHeadroom.toFixed(1)} psi RVP unused as headroom. Cost profile: ${cost.summary}. Proceed or try for a tighter blend?`
         };
     }
     return {
-        grade: 'pass', blend,
-        msg: `Perfect ${spec.label} blend! ${blend.octane} RON, ${blend.rvp} psi RVP — tight on spec and cost-efficient. `
+        grade: 'pass', blend, cost,
+        msg: `Perfect ${spec.label} blend! ${blend.octane} OCT, ${blend.rvp} psi RVP — tight on spec with a ${cost.label.toLowerCase()} cost profile (${cost.dollars}).`
     };
 }
 
 function updateBlendDisplay(volumes, productKey) {
     const blend = calculateBlend(volumes);
+    const cost = calculateBlendCost(volumes);
     const spec = GAS_PRODUCTS[productKey];
     const readout = getEl('blend-live-readout');
     if (!readout) return;
@@ -3472,10 +3807,13 @@ function updateBlendDisplay(volumes, productKey) {
     const rvpOk = blend.total > 0 && blend.rvp <= spec.maxRVP;
     readout.innerHTML = `
         <span style="color:${blend.total > 0 ? (octaneOk ? '#2e7d32' : '#c53030') : '#666'}">
-            Octane: <strong>${blend.total > 0 ? blend.octane + ' RON' : '--'}</strong>
+            Octane: <strong>${blend.total > 0 ? blend.octane + ' OCT' : '--'}</strong>
         </span>
         <span style="color:${blend.total > 0 ? (rvpOk ? '#2e7d32' : '#c53030') : '#666'}">
             RVP: <strong>${blend.total > 0 ? blend.rvp + ' psi' : '--'}</strong>
+        </span>
+        <span style="color:${blend.total > 0 ? (cost.label === 'Cheap' ? '#2e7d32' : cost.label === 'Expensive' ? '#c53030' : '#b7791f') : '#666'}">
+            Cost: <strong>${blend.total > 0 ? `${cost.dollars} ${cost.label}` : '--'}</strong>
         </span>
     `;
     // Fill the blend tank visual
@@ -3502,7 +3840,7 @@ const ULSD_TREATMENT_POOL = [
     },
     {
         id: 'lub', name: 'Lubricity Additive', unit: 'ppm', target: 300, step: 25, color: '#34d399', emoji: '⚙️',
-        hint: 'Ultra-low sulfur diesel needs to slip and slide through pipes; this helps it'
+        hint: 'Helps protect pumps and injectors after sulfur removal strips away natural lubricity'
     },
     {
         id: 'stat', name: 'Static Dissipator', unit: 'ppm', target: 2, step: 1, color: '#a78bfa', emoji: '⚡',
@@ -3575,8 +3913,8 @@ const JET_BATCH_POOL = [
     // bad batches — explicitly defined for feedback
     { id: 7, good: false, flash: 90, freeze: -48, sulfur: 800, density: 0.796, smoke: 28, failSpec: 'flash', failMsg: 'Flash point is too low — extreme fire hazard during handling.' },
     { id: 8, good: false, flash: 115, freeze: -25, sulfur: 800, density: 0.796, smoke: 28, failSpec: 'freeze', failMsg: 'Freeze point too warm — fuel would gel in aircraft tanks at altitude.' },
-    { id: 9, good: false, flash: 105, freeze: -45, sulfur: 3400, density: 0.796, smoke: 28, failSpec: 'sulfur', failMsg: 'Sulfur exceeds 3000 ppm — causes turbine corrosion and violates emissions.' },
-    { id: 10, good: false, flash: 110, freeze: -42, sulfur: 900, density: 0.822, smoke: 28, failSpec: 'density', failMsg: 'Density out of range — fuel metering will be incorrect, risking engine stall.' },
+    { id: 9, good: false, flash: 105, freeze: -45, sulfur: 3400, density: 0.796, smoke: 28, failSpec: 'sulfur', failMsg: 'Sulfur exceeds 3000 ppm — the batch is out of release range and can affect equipment protection and combustion cleanliness.' },
+    { id: 10, good: false, flash: 110, freeze: -42, sulfur: 900, density: 0.822, smoke: 28, failSpec: 'density', failMsg: 'Density is out of range — the batch is out of release range and can affect fuel-system performance and planning accuracy.' },
     { id: 11, good: false, flash: 110, freeze: -42, sulfur: 900, density: 0.800, smoke: 18, failSpec: 'smoke', failMsg: 'Smoke point too low — combustion will be incomplete and produce excessive soot.' }
 ];
 
@@ -3730,8 +4068,9 @@ function setupMinigame() {
                             <div class="comp-tank-fill" id="cfill-${key}" style="background:${c.color};height:100%"></div>
                             <span class="comp-count" id="vol-${key}">0</span>
                         </div>
-                                                                                                            <div class="comp-tank-label">
+                        <div class="comp-tank-label">
                                 <strong>${c.label}</strong>
+                                <span class="comp-cost-tag">${c.costLabel}</span>
                                 <div class="comp-impact" id="impact-${key}"></div>
                             </div>
                     </div>
@@ -3751,6 +4090,7 @@ function setupMinigame() {
                     <div class="blend-live-readout" id="blend-live-readout">
                         <span style="color:#999">Octane: --</span>
                         <span style="color:#999">RVP: --</span>
+                        <span style="color:#999">Cost: --</span>
                     </div>
                 </div>
                 <div class="blend-tank-label">Blend Tank</div>
@@ -3823,7 +4163,7 @@ function setupMinigame() {
                 });
                 const vt = getEl('vol-total-display'); if (vt) vt.textContent = '0/10';
                 const readout = getEl('blend-live-readout');
-                if (readout) readout.innerHTML = '<span>Octane: <strong>--</strong></span><span>RVP: <strong>--</strong></span>';
+                if (readout) readout.innerHTML = '<span>Octane: <strong>--</strong></span><span>RVP: <strong>--</strong></span><span>Cost: <strong>--</strong></span>';
                 if (labCheck) labCheck.classList.add('hidden');
                 if (testBtn) testBtn.disabled = true;
                 updateImpactArrows();
@@ -3871,6 +4211,10 @@ function setupMinigame() {
         });
 
         updateImpactArrows();
+        if (!state.gasolineIntroShown) {
+            showGasolineIntroCard();
+            state.gasolineIntroShown = true;
+        }
 
         if (testBtn) {
             testBtn.innerText = '🧪 Send to Lab';
@@ -3894,7 +4238,7 @@ function setupMinigame() {
                 <div>
                     <h3 style="margin: 0 0 4px 0;">✈️ Jet A — Certificate Of Analysis</h3>
                     <p style="font-size:0.75rem;color:#555;margin:0;max-width:220px;">
-                        Approve on-spec fuel to fill the Cargo Tank. One bad batch ruins the whole cargo!
+                        Approve on-spec fuel to fill the Cargo Tank. Check flash, freeze, sulfur, density, and smoke before one bad batch ruins the whole cargo.
                     </p>
                 </div>
                 <div style="text-align: right; font-size: 0.8rem; flex-shrink: 0;">
@@ -3935,6 +4279,10 @@ function setupMinigame() {
             </div>
         `;
 
+        if (!state.jetIntroShown) {
+            showJetIntroCard();
+            state.jetIntroShown = true;
+        }
 
         if (testBtn) {
             testBtn.innerText = '🧪 Certify Jet Tank';
@@ -3954,7 +4302,7 @@ function setupMinigame() {
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
                 <div style="text-align: left;">
                     <h3 style="margin:0 0 2px">⚗️ ULSD Treatment</h3>
-                    <p style="font-size:0.75rem;color:#555;margin:0">Add precise ppm doses.</p>
+                    <p style="font-size:0.75rem;color:#555;margin:0">Add precise ppm doses. ppm means tiny amounts, so accuracy protects fuel systems without wasting additive.</p>
                 </div>
                 <div class="ulsd-timer-bar" style="margin:0; padding:4px 10px;">
                     ⏱ <strong id="ulsd-timer">60</strong>s
@@ -4954,7 +5302,1056 @@ function startPipeXray(options = {}) {
     showPhase('pipe-xray');
 }
 
-// Pipe X-ray definition complete
+/* =========================================
+   SRU BONUS LEVEL
+========================================= */
+function buildSruMarkup() {
+    return `
+        <div id="sru-stage" class="sru-stage">
+            <div class="sru-topbar">
+                <div class="sru-topbar__lead">
+                    <div class="sru-topbar__mode" id="sru-mode-chip">30s Shift</div>
+                    <div class="sru-topbar__multi-badge">
+                        <span>Multi</span>
+                        <strong id="sru-multiplier">x1.0</strong>
+                    </div>
+                </div>
+                <div class="sru-topbar__stats">
+                    <div class="sru-stat"><span>Time</span><strong id="sru-time-left">0:30</strong></div>
+                    <div class="sru-stat"><span>Score</span><strong id="sru-score">0</strong></div>
+                    <div class="sru-stat"><span>Best</span><strong id="sru-best">${state.sruBestScore.toLocaleString()}</strong></div>
+                </div>
+            </div>
+
+            <div class="sru-plant">
+                <svg class="sru-plant__svg" viewBox="0 0 720 420" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="sruSteel" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stop-color="#e3edf8"></stop>
+                            <stop offset="100%" stop-color="#8ca4bd"></stop>
+                        </linearGradient>
+                    </defs>
+                    <rect class="sru-svg-bg" x="0" y="0" width="720" height="420" rx="28"></rect>
+                    <g class="sru-svg-labels">
+                        <text x="78" y="98">Sulfur Cut</text>
+                        <text x="246" y="112">Furnace</text>
+                        <text x="426" y="112">Converter</text>
+                        <text x="528" y="112">Condenser</text>
+                        <text x="607" y="164">Seal Leg</text>
+                        <text x="652" y="114">Tail Gas</text>
+                    </g>
+                    <g class="sru-svg-pipes">
+                        <path id="sru-feed-line" d="M74 210 H142" class="sru-flow-line"></path>
+                        <path d="M198 210 H244" class="sru-static-line"></path>
+                        <path d="M346 210 H414" class="sru-static-line"></path>
+                        <path d="M496 210 H518" class="sru-static-line"></path>
+                        <path d="M590 210 H660" class="sru-static-line"></path>
+                        <path d="M560 274 V292 H606" class="sru-static-line"></path>
+                        <path d="M608 300 V336 H640" class="sru-loading-line"></path>
+                        <path d="M494 356 H690" class="sru-haul-line"></path>
+                    </g>
+                    <g id="sru-sourness-gauge">
+                        <rect x="92" y="110" width="28" height="102" rx="14" class="sru-vessel"></rect>
+                        <rect x="99" y="120" width="14" height="82" rx="7" class="sru-vessel-inset"></rect>
+                        <clipPath id="sru-sourness-clip">
+                            <rect x="99" y="120" width="14" height="82" rx="7"></rect>
+                        </clipPath>
+                        <rect id="sru-sourness-fill" x="99" y="166" width="14" height="36" clip-path="url(#sru-sourness-clip)" class="sru-liquid sru-liquid--bright"></rect>
+                    </g>
+                    <g id="sru-feed-assembly">
+                        <circle cx="170" cy="210" r="29" class="sru-wheel"></circle>
+                        <circle id="sru-feed-wheel" cx="170" cy="210" r="15" class="sru-wheel-center"></circle>
+                        <line x1="170" y1="182" x2="170" y2="238" class="sru-wheel-spoke"></line>
+                        <line x1="142" y1="210" x2="198" y2="210" class="sru-wheel-spoke"></line>
+                    </g>
+                    <g id="sru-furnace-body">
+                        <rect id="sru-furnace-shell" x="244" y="136" width="102" height="146" rx="30" class="sru-vessel"></rect>
+                        <rect x="258" y="152" width="74" height="114" rx="24" class="sru-vessel-inset"></rect>
+                        <path id="sru-flame-outer" d="M295 242 C272 206 276 184 296 156 C320 184 324 206 295 242 Z" class="sru-flame-outer"></path>
+                        <path id="sru-flame-core" d="M295 228 C282 202 284 190 295 173 C309 191 311 204 295 228 Z" class="sru-flame-core"></path>
+                        <rect id="sru-air-handle" x="224" y="248" width="26" height="24" rx="8" class="sru-damper"></rect>
+                    </g>
+                    <g id="sru-bed-train">
+                        <rect id="sru-bed-one" x="414" y="156" width="82" height="40" rx="18" class="sru-bed"></rect>
+                        <rect id="sru-bed-two" x="414" y="220" width="82" height="40" rx="18" class="sru-bed"></rect>
+                        <rect x="427" y="168" width="56" height="16" rx="8" class="sru-bed-window"></rect>
+                        <rect x="427" y="232" width="56" height="16" rx="8" class="sru-bed-window"></rect>
+                    </g>
+                    <g id="sru-condenser-block">
+                        <rect x="518" y="146" width="70" height="126" rx="20" class="sru-vessel"></rect>
+                        <rect x="531" y="160" width="44" height="100" rx="14" class="sru-vessel-inset"></rect>
+                        <clipPath id="sru-condenser-clip">
+                            <rect x="531" y="160" width="44" height="100" rx="14"></rect>
+                        </clipPath>
+                        <rect id="sru-condenser-fill" x="531" y="228" width="44" height="32" clip-path="url(#sru-condenser-clip)" class="sru-liquid"></rect>
+                    </g>
+                    <g id="sru-seal-leg-block">
+                        <rect x="604" y="194" width="28" height="118" rx="12" class="sru-vessel"></rect>
+                        <rect x="610" y="204" width="16" height="94" rx="8" class="sru-vessel-inset"></rect>
+                        <clipPath id="sru-seal-leg-clip">
+                            <rect x="610" y="204" width="16" height="94" rx="8"></rect>
+                        </clipPath>
+                        <rect id="sru-seal-leg-fill" x="610" y="260" width="16" height="38" clip-path="url(#sru-seal-leg-clip)" class="sru-liquid"></rect>
+                    </g>
+                    <g id="sru-pit-group">
+                        <rect x="494" y="292" width="120" height="60" rx="18" class="sru-pit"></rect>
+                        <clipPath id="sru-pit-clip">
+                            <rect x="494" y="292" width="120" height="60" rx="18"></rect>
+                        </clipPath>
+                        <rect id="sru-pit-fill" x="494" y="336" width="120" height="16" clip-path="url(#sru-pit-clip)" class="sru-liquid sru-liquid--pit"></rect>
+                    </g>
+                    <g id="sru-stack-group">
+                        <rect x="660" y="128" width="30" height="176" rx="13" class="sru-stack"></rect>
+                        <path id="sru-stack-plume" d="M675 132 C660 98 663 76 675 48 C690 78 693 98 675 132 Z" class="sru-plume"></path>
+                    </g>
+                    <g id="sru-truck-one" class="sru-truck">
+                        <rect x="564" y="342" width="36" height="14" rx="4" class="sru-truck-body"></rect>
+                        <rect x="596" y="346" width="12" height="10" rx="2" class="sru-truck-cab"></rect>
+                        <rect x="570" y="338" width="22" height="7" rx="3" class="sru-truck-load"></rect>
+                        <circle cx="572" cy="358" r="4.5" class="sru-truck-wheel"></circle>
+                        <circle cx="598" cy="358" r="4.5" class="sru-truck-wheel"></circle>
+                    </g>
+                    <g id="sru-truck-two" class="sru-truck">
+                        <rect x="626" y="342" width="34" height="14" rx="4" class="sru-truck-body"></rect>
+                        <rect x="656" y="346" width="12" height="10" rx="2" class="sru-truck-cab"></rect>
+                        <rect x="632" y="338" width="20" height="7" rx="3" class="sru-truck-load"></rect>
+                        <circle cx="634" cy="358" r="4.5" class="sru-truck-wheel"></circle>
+                        <circle cx="660" cy="358" r="4.5" class="sru-truck-wheel"></circle>
+                    </g>
+                    <path id="sru-sulfur-stream" d="M608 300 V336 H640" class="sru-sulfur-stream"></path>
+                </svg>
+
+                <div id="sru-overlay" class="sru-overlay"></div>
+            </div>
+
+            <div class="sru-rail">
+                <div class="sru-rail__metrics">
+                    <div class="sru-live-chip">
+                        <span>Air Match</span>
+                        <strong id="sru-air-match-readout">100%</strong>
+                    </div>
+                    <div class="sru-live-chip">
+                        <span>Seal Level</span>
+                        <strong id="sru-level-readout">50%</strong>
+                    </div>
+                </div>
+                <div class="sru-rail__status" id="sru-strip-status">Set feed, hold air on target, and keep the sulfur leg centered.</div>
+                <div class="sru-rail__body">
+                    <div class="sru-rail__controls">
+                        <div class="sru-inline-control sru-inline-control--feed" aria-label="Set sour gas feed band">
+                            <div class="sru-inline-control__head">
+                                <span class="sru-inline-control__title">Feed</span>
+                                <strong id="sru-feed-value">Medium x1.5</strong>
+                            </div>
+                            <div class="sru-segmented" id="sru-feed-buttons">
+                                <button id="sru-feed-low" class="sru-segmented__btn" type="button">Low</button>
+                                <button id="sru-feed-medium" class="sru-segmented__btn is-active" type="button">Med</button>
+                                <button id="sru-feed-high" class="sru-segmented__btn" type="button">High</button>
+                            </div>
+                        </div>
+                        <label class="sru-inline-control sru-inline-control--air" aria-label="Adjust combustion air">
+                            <div class="sru-inline-control__head">
+                                <span class="sru-inline-control__title">Air</span>
+                                <strong id="sru-air-value">48%</strong>
+                            </div>
+                            <div class="sru-slider-shell">
+                                <div id="sru-air-target-marker" class="sru-slider-target"></div>
+                                <input id="sru-air-input" class="sru-range-input" type="range" min="0" max="100" value="48" aria-label="Combustion air">
+                            </div>
+                        </label>
+                        <label class="sru-inline-control sru-inline-control--draw" aria-label="Adjust sulfur drain valve">
+                            <div class="sru-inline-control__head">
+                                <span class="sru-inline-control__title">Drain</span>
+                                <strong id="sru-draw-value">55%</strong>
+                            </div>
+                            <div class="sru-slider-shell">
+                                <div id="sru-drain-safe-band" class="sru-slider-safe-band"></div>
+                                <input id="sru-drain-input" class="sru-range-input sru-range-input--drain" type="range" min="0" max="100" value="55" aria-label="Sulfur drain valve">
+                            </div>
+                        </label>
+                    </div>
+                    <div class="sru-rail__actions">
+                        <button id="sru-pause-btn" class="btn btn-secondary interactive-element">Pause</button>
+                        <button id="sru-map-btn" class="btn interactive-element">Exit to Map</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function bindSruDom(root) {
+    sruDom = {
+        root,
+        stage: getEl('sru-stage'),
+        modeChip: getEl('sru-mode-chip'),
+        score: getEl('sru-score'),
+        best: getEl('sru-best'),
+        multiplier: getEl('sru-multiplier'),
+        timeLeft: getEl('sru-time-left'),
+        status: getEl('sru-strip-status'),
+        pauseBtn: getEl('sru-pause-btn'),
+        mapBtn: getEl('sru-map-btn'),
+        overlay: getEl('sru-overlay'),
+        airMatchReadout: getEl('sru-air-match-readout'),
+        levelReadout: getEl('sru-level-readout'),
+        feedValue: getEl('sru-feed-value'),
+        airValue: getEl('sru-air-value'),
+        drawValue: getEl('sru-draw-value'),
+        feedLowBtn: getEl('sru-feed-low'),
+        feedMediumBtn: getEl('sru-feed-medium'),
+        feedHighBtn: getEl('sru-feed-high'),
+        airInput: getEl('sru-air-input'),
+        drainInput: getEl('sru-drain-input'),
+        airTargetMarker: getEl('sru-air-target-marker'),
+        feedLine: getEl('sru-feed-line'),
+        feedWheel: getEl('sru-feed-wheel'),
+        airHandle: getEl('sru-air-handle'),
+        flameOuter: getEl('sru-flame-outer'),
+        flameCore: getEl('sru-flame-core'),
+        furnaceShell: getEl('sru-furnace-shell'),
+        bedOne: getEl('sru-bed-one'),
+        bedTwo: getEl('sru-bed-two'),
+        condenserFill: getEl('sru-condenser-fill'),
+        sealLegFill: getEl('sru-seal-leg-fill'),
+        pitFill: getEl('sru-pit-fill'),
+        sulfurStream: getEl('sru-sulfur-stream'),
+        stackPlume: getEl('sru-stack-plume'),
+        sournessFill: getEl('sru-sourness-fill'),
+        truckOne: getEl('sru-truck-one'),
+        truckTwo: getEl('sru-truck-two')
+    };
+
+    [['low', sruDom.feedLowBtn], ['medium', sruDom.feedMediumBtn], ['high', sruDom.feedHighBtn]].forEach(([key, button]) => {
+        if (!button) return;
+        button.addEventListener('click', () => {
+            if (!sruRunState || button.disabled) return;
+            setSruFeedPreset(key);
+            setSruStatus('feed-adjust', `Feed moved to ${SRU_FEED_PRESETS[key].label}. Keep the air marker centered as feed sulfur swings.`, { force: true, holdMs: 800 });
+            updateSruUi();
+        });
+    });
+
+    if (sruDom.airInput) {
+        sruDom.airInput.addEventListener('input', event => {
+            if (!sruRunState || sruDom.airInput.disabled) return;
+            sruRunState.airControl = clampSruValue(Number(event.target.value));
+            setSruStatus('air-adjust', 'Air trim updated. Keep the slider on the live target marker.', { force: true, holdMs: 700 });
+            updateSruUi();
+        });
+    }
+
+    if (sruDom.drainInput) {
+        sruDom.drainInput.addEventListener('input', event => {
+            if (!sruRunState || sruDom.drainInput.disabled) return;
+            sruRunState.drainControl = clampSruValue(Number(event.target.value));
+            setSruStatus('drain-adjust', 'Drain valve moved. Hold molten sulfur in the middle band.', { force: true, holdMs: 700 });
+            updateSruUi();
+        });
+    }
+
+    if (sruDom.pauseBtn) {
+        sruDom.pauseBtn.addEventListener('click', () => {
+            if (!sruRunState || sruRunState.mode === 'briefing' || sruRunState.mode === 'result') return;
+            sruRunState.paused = !sruRunState.paused;
+            updateSruUi();
+        });
+    }
+
+    if (sruDom.mapBtn) {
+        sruDom.mapBtn.addEventListener('click', openGameMapFromSru);
+    }
+
+    if (root) {
+        root.addEventListener('click', event => {
+            const actionEl = event.target.closest('[data-sru-action]');
+            if (!actionEl || !sruRunState) return;
+            const action = actionEl.getAttribute('data-sru-action');
+            if (action === 'start-shift' || action === 'retry') {
+                startSruQualification();
+            } else if (action === 'resume') {
+                sruRunState.paused = false;
+                updateSruUi();
+            } else if (action === 'back-map') {
+                openGameMapFromSru();
+            }
+        });
+    }
+}
+
+function syncSruControls() {
+    if (!sruRunState || !sruDom) return;
+    const lockInputs = sruRunState.mode === 'briefing' || sruRunState.mode === 'result' || sruRunState.countdown > 0 || sruRunState.paused;
+
+    [sruDom.feedLowBtn, sruDom.feedMediumBtn, sruDom.feedHighBtn].forEach((button, index) => {
+        if (!button) return;
+        button.disabled = lockInputs;
+        const key = ['low', 'medium', 'high'][index];
+        button.classList.toggle('is-active', sruRunState.feedPreset === key);
+    });
+    if (sruDom.airInput) {
+        sruDom.airInput.value = String(Math.round(sruRunState.airControl));
+        sruDom.airInput.disabled = lockInputs;
+    }
+    if (sruDom.drainInput) {
+        sruDom.drainInput.value = String(Math.round(sruRunState.drainControl));
+        sruDom.drainInput.disabled = lockInputs;
+    }
+}
+
+function renderSruOverlay() {
+    if (!sruRunState || !sruDom || !sruDom.overlay) return;
+
+    let overlayClass = 'sru-overlay-card';
+    let content = '';
+
+    if (sruRunState.mode === 'briefing') {
+        const certified = state.completedUnits.includes('sru');
+        content = `
+            <div class="${overlayClass}">
+                <p class="sru-kicker">${certified ? 'Bonus Score Run' : 'Bonus Level'}</p>
+                <h3>${certified ? 'SRU Shift' : 'Sulfur Recovery Unit'}</h3>
+                <p>Choose a feed band, keep the air slider on the moving target, and hold the sulfur seal in the yellow middle for 30 seconds.</p>
+                <div class="sru-note-pill">${certified ? 'V-804 already earned. Chase a better score.' : 'Finish one clean shift to add SRU to V-804.'}</div>
+                <div class="sru-overlay-actions">
+                    <button class="btn interactive-element" data-sru-action="start-shift">${certified ? 'Start Shift' : 'Start V-804 Shift'}</button>
+                    <button class="btn btn-secondary interactive-element" data-sru-action="back-map">Back to Map</button>
+                </div>
+            </div>
+        `;
+    } else if (sruRunState.countdown > 0) {
+        content = `
+            <div class="${overlayClass} sru-overlay-card--countdown">
+                <p class="sru-kicker">${getSruModeLabel()}</p>
+                <h3>${Math.ceil(sruRunState.countdown)}</h3>
+                <p>Set feed, air, and drain before the sulfur shift swings.</p>
+            </div>
+        `;
+    } else if (sruRunState.paused) {
+        content = `
+            <div class="${overlayClass}">
+                <p class="sru-kicker">Paused</p>
+                <h3>SRU on standby</h3>
+                <p>The shift timer is paused. Resume when you are ready to trim the ratio again.</p>
+                <div class="sru-overlay-actions">
+                    <button class="btn interactive-element" data-sru-action="resume">Resume</button>
+                    <button class="btn btn-secondary interactive-element" data-sru-action="back-map">Back to Map</button>
+                </div>
+            </div>
+        `;
+    } else if (sruRunState.mode === 'result') {
+        overlayClass += ' sru-overlay-card--result';
+        const kicker = sruRunState.resultType === 'success'
+            ? (sruRunState.qualifiedThisSession ? 'V-804 Credit Earned' : 'Shift Complete')
+            : 'Unit Tripped';
+        const bestLine = `${state.sruBestScore.toLocaleString()} pts | ${state.sruBestTime.toFixed(1)}s | ${state.sruBestRecovered.toFixed(1)} tons`;
+        content = `
+            <div class="${overlayClass}">
+                <p class="sru-kicker">${kicker}</p>
+                <h3>${sruRunState.resultTitle}</h3>
+                <p>${sruRunState.resultDetail}</p>
+                <div class="sru-result-summary">
+                    <div class="sru-result-summary__item">
+                        <span>Score</span>
+                        <strong>${Math.round(sruRunState.score).toLocaleString()}</strong>
+                    </div>
+                    <div class="sru-result-summary__item">
+                        <span>Best Run</span>
+                        <strong>${bestLine}</strong>
+                    </div>
+                    <div class="sru-result-summary__item">
+                        <span>In Zone</span>
+                        <strong>${sruRunState.stableSeconds.toFixed(1)}s</strong>
+                    </div>
+                    <div class="sru-result-summary__item">
+                        <span>Sulfur Hauled</span>
+                        <strong>${sruRunState.recoveredTons.toFixed(1)} tons</strong>
+                    </div>
+                </div>
+                <div class="sru-fact-card">
+                    <span>Fun Fact</span>
+                    <strong>${sruRunState.resultFact}</strong>
+                </div>
+                <div class="sru-overlay-actions">
+                    <button class="btn interactive-element" data-sru-action="retry">Run Again</button>
+                    <button class="btn btn-secondary interactive-element" data-sru-action="back-map">Back to Map</button>
+                </div>
+            </div>
+        `;
+    }
+
+    const signature = JSON.stringify({
+        mode: sruRunState.mode,
+        countdown: sruRunState.countdown > 0 ? Math.ceil(sruRunState.countdown) : 0,
+        paused: sruRunState.paused,
+        resultType: sruRunState.resultType,
+        resultTitle: sruRunState.resultTitle,
+        resultDetail: sruRunState.resultDetail,
+        certified: state.completedUnits.includes('sru'),
+        content
+    });
+
+    if (signature !== sruOverlaySignature) {
+        sruOverlaySignature = signature;
+        sruDom.overlay.innerHTML = content;
+        sruDom.overlay.querySelectorAll('[data-sru-action]').forEach(button => {
+            button.onclick = event => {
+                event.preventDefault();
+                event.stopPropagation();
+                const action = button.getAttribute('data-sru-action');
+                if (action === 'start-shift' || action === 'retry') {
+                    startSruQualification();
+                } else if (action === 'resume') {
+                    sruRunState.paused = false;
+                    updateSruUi();
+                } else if (action === 'back-map') {
+                    openGameMapFromSru();
+                }
+            };
+        });
+    }
+
+    sruDom.overlay.classList.toggle('is-active', Boolean(content));
+}
+
+function updateSruBoardVisuals() {
+    if (!sruRunState || !sruDom || !sruDom.stage) return;
+    const airRatioError = sruRunState.airControl - sruRunState.targetAir;
+    const airMatch = clampSruValue(100 - Math.abs(airRatioError) * 3.2, 0, 100);
+    const flameScale = 0.9 + clampSruValue(Math.abs(airRatioError), 0, 26) / 58;
+    const flameHue = airRatioError > 8 ? '#fff0a6' : airRatioError < -8 ? '#f97316' : '#fbbf24';
+    const plumeOpacity = clampSruValue(Math.abs(airRatioError) / 24, 0.14, 0.9);
+    const condenserHeight = 16 + clampSruValue(sruRunState.condenserLevel) * 0.78;
+    const sealHeight = 12 + clampSruValue(sruRunState.condenserLevel) * 0.72;
+    const hauling = sruRunState.drainControl >= 48 && sruRunState.condenserLevel >= 36;
+    const pitLevel = clampSruValue((sruRunState.condenserLevel - 32) * 0.55 + (hauling ? 8 : 0), 8, 28);
+    const pitHeight = 10 + pitLevel;
+    const bedGlow = clampSruValue((airMatch - 40) / 60, 0.12, 1);
+    const feedDash = (sruRunState.onlineSeconds * (2.4 + sruRunState.throughput * 0.08)).toFixed(1);
+    const sournessHeight = 14 + clampSruValue(sruRunState.feedSulfur) * 0.66;
+
+    sruDom.stage.classList.toggle('is-underair', sruRunState.targetAir - sruRunState.airControl >= 18);
+    sruDom.stage.classList.toggle('is-offratio', Math.abs(airRatioError) >= 24);
+    sruDom.stage.classList.toggle('is-backed-up', sruRunState.condenserLevel >= 84);
+    sruDom.stage.classList.toggle('is-drawing', hauling);
+    sruDom.stage.classList.toggle('is-result', sruRunState.mode === 'result');
+
+    if (sruDom.feedWheel) {
+        const presetAngle = { low: -34, medium: 0, high: 34 }[sruRunState.feedPreset] || 0;
+        sruDom.feedWheel.style.transform = `rotate(${presetAngle}deg)`;
+        sruDom.feedWheel.style.transformOrigin = '170px 210px';
+    }
+    if (sruDom.airHandle) {
+        const handleX = 224 + clampSruValue(sruRunState.airControl) * 0.2;
+        sruDom.airHandle.setAttribute('x', handleX.toFixed(1));
+    }
+    if (sruDom.feedLine) {
+        sruDom.feedLine.style.strokeDashoffset = `-${feedDash}`;
+        sruDom.feedLine.style.opacity = `${0.45 + (sruRunState.throughput / 100) * 0.55}`;
+    }
+    if (sruDom.flameOuter) {
+        sruDom.flameOuter.style.transform = `translateY(${airRatioError > 6 ? -5 : 0}px) scale(${flameScale})`;
+        sruDom.flameOuter.style.transformOrigin = '295px 200px';
+        sruDom.flameOuter.style.fill = flameHue;
+    }
+    if (sruDom.flameCore) {
+        sruDom.flameCore.style.transform = `scale(${Math.max(0.82, flameScale - 0.12)})`;
+        sruDom.flameCore.style.transformOrigin = '295px 200px';
+    }
+    if (sruDom.furnaceShell) {
+        sruDom.furnaceShell.style.filter = `drop-shadow(0 0 ${Math.abs(airRatioError) * 0.32}px rgba(239,68,68,0.3))`;
+    }
+    if (sruDom.bedOne) sruDom.bedOne.style.opacity = `${0.56 + bedGlow * 0.42}`;
+    if (sruDom.bedTwo) sruDom.bedTwo.style.opacity = `${0.48 + bedGlow * 0.5}`;
+    if (sruDom.condenserFill) {
+        sruDom.condenserFill.setAttribute('y', `${260 - condenserHeight}`);
+        sruDom.condenserFill.setAttribute('height', `${condenserHeight}`);
+    }
+    if (sruDom.sealLegFill) {
+        sruDom.sealLegFill.setAttribute('y', `${298 - sealHeight}`);
+        sruDom.sealLegFill.setAttribute('height', `${sealHeight}`);
+    }
+    if (sruDom.pitFill) {
+        sruDom.pitFill.setAttribute('y', `${352 - pitHeight}`);
+        sruDom.pitFill.setAttribute('height', `${pitHeight}`);
+    }
+    if (sruDom.sulfurStream) {
+        sruDom.sulfurStream.style.opacity = hauling ? '1' : '0';
+    }
+    if (sruDom.stackPlume) {
+        sruDom.stackPlume.style.opacity = `${plumeOpacity}`;
+        sruDom.stackPlume.style.fill = Math.abs(airRatioError) >= 18 ? '#4b5563' : '#d8e2ea';
+    }
+    if (sruDom.sournessFill) {
+        sruDom.sournessFill.setAttribute('y', `${204 - sournessHeight}`);
+        sruDom.sournessFill.setAttribute('height', `${sournessHeight}`);
+    }
+    if (sruDom.airTargetMarker) {
+        sruDom.airTargetMarker.style.left = `${clampSruValue(sruRunState.targetAir)}%`;
+    }
+    if (sruDom.truckOne) {
+        sruDom.truckOne.setAttribute('transform', `translate(${(sruRunState.truckOffset % 54).toFixed(1)}, 0)`);
+    }
+    if (sruDom.truckTwo) {
+        sruDom.truckTwo.setAttribute('transform', `translate(${((sruRunState.truckOffset * 0.72) % 60).toFixed(1)}, 0)`);
+    }
+}
+
+function updateSruUi() {
+    if (!sruRunState || !sruDom) return;
+    const airMatch = clampSruValue(100 - Math.abs(sruRunState.airControl - sruRunState.targetAir) * 3.2, 0, 100);
+    const levelPct = clampSruValue(sruRunState.condenserLevel, 0, 100);
+    const timeLeft = Math.max(0, SRU_SHIFT_SECONDS - sruRunState.onlineSeconds);
+
+    if (sruDom.modeChip) sruDom.modeChip.textContent = getSruModeLabel();
+    if (sruDom.score) sruDom.score.textContent = Math.round(sruRunState.score).toLocaleString();
+    if (sruDom.best) sruDom.best.textContent = state.sruBestScore.toLocaleString();
+    if (sruDom.multiplier) sruDom.multiplier.textContent = `x${sruRunState.multiplier.toFixed(1)}`;
+    if (sruDom.timeLeft) sruDom.timeLeft.textContent = `0:${String(Math.ceil(timeLeft)).padStart(2, '0')}`;
+    if (sruDom.status) sruDom.status.textContent = sruRunState.statusText;
+    if (sruDom.feedValue) sruDom.feedValue.textContent = `${getSruFeedPreset().label} x${getSruFeedPreset().multiplier.toFixed(1)}`;
+    if (sruDom.airValue) sruDom.airValue.textContent = `${Math.round(sruRunState.airControl)}%`;
+    if (sruDom.drawValue) sruDom.drawValue.textContent = `${Math.round(sruRunState.drainControl)}%`;
+    if (sruDom.airMatchReadout) {
+        sruDom.airMatchReadout.textContent = `${Math.round(airMatch)}%`;
+        sruDom.airMatchReadout.className = airMatch >= 84 ? 'is-good' : airMatch >= 68 ? 'is-caution' : 'is-danger';
+    }
+    if (sruDom.levelReadout) {
+        sruDom.levelReadout.textContent = `${Math.round(levelPct)}%`;
+        sruDom.levelReadout.className = levelPct >= 40 && levelPct <= 60 ? 'is-good' : levelPct >= 28 && levelPct <= 72 ? 'is-caution' : 'is-danger';
+    }
+    if (sruDom.pauseBtn) {
+        sruDom.pauseBtn.textContent = sruRunState.paused ? 'Resume' : 'Pause';
+        sruDom.pauseBtn.disabled = sruRunState.mode === 'briefing' || sruRunState.mode === 'result';
+    }
+
+    syncSruControls();
+    renderSruOverlay();
+    updateSruBoardVisuals();
+}
+
+const SRU_SIM_STEP_MS = 50;
+const SRU_SHIFT_SECONDS = 30;
+const SRU_HEATER_TRIP_SECONDS = 1.5;
+const SRU_SO2_TRIP_SECONDS = 1.5;
+const SRU_LEVEL_TRIP_SECONDS = 1.0;
+const SRU_FUN_FACTS = {
+    success: 'Claus sulfur recovery units convert hydrogen sulfide into elemental sulfur so refineries can clean fuels while capturing sulfur as a product instead of venting it.',
+    'Heater Trip': 'The Claus furnace needs enough combustion air to stay hot and stable. Too little oxygen can collapse the front-end thermal reaction zone.',
+    'SO2 Excursion': 'SRU operators track air-to-acid-gas ratio closely because a big ratio miss can cut sulfur recovery and push stack SO2 upward fast.',
+    'Blow Through': 'Liquid sulfur legs act as seals. If the sulfur level is pulled too low, gas can blow through and upset downstream sulfur handling.',
+    'Overflow': 'If sulfur is not drawn off fast enough, the condenser leg can back up and force operators to cut rate or shut the train down.'
+};
+const SRU_FEED_PRESETS = {
+    low: { label: 'Low', control: 34, multiplier: 1.0, production: 0.82 },
+    medium: { label: 'Medium', control: 52, multiplier: 1.5, production: 1.0 },
+    high: { label: 'High', control: 70, multiplier: 2.1, production: 1.28 }
+};
+let sruGameLoop = null;
+let sruRunState = null;
+let sruDom = null;
+let sruLoopLastTime = 0;
+let sruLoopAccumulator = 0;
+let sruOverlaySignature = '';
+
+function cleanupSRUPhase() {
+    if (sruGameLoop) {
+        cancelAnimationFrame(sruGameLoop);
+        sruGameLoop = null;
+    }
+    sruLoopLastTime = 0;
+    sruLoopAccumulator = 0;
+    sruOverlaySignature = '';
+    sruRunState = null;
+    sruDom = null;
+}
+
+function clampSruValue(value, min = 0, max = 100) {
+    return Math.max(min, Math.min(max, value));
+}
+
+function sruLerp(start, end, amount) {
+    return start + (end - start) * amount;
+}
+
+function getSruModeLabel() {
+    if (!sruRunState) return '30s Shift';
+    if (sruRunState.mode === 'qualification') return '30s Shift';
+    if (sruRunState.mode === 'result') return 'Result';
+    return '30s Shift';
+}
+
+function getSruFeedPreset(preset = null) {
+    const key = preset || (sruRunState ? sruRunState.feedPreset : 'medium');
+    return SRU_FEED_PRESETS[key] || SRU_FEED_PRESETS.medium;
+}
+
+function setSruFeedPreset(preset) {
+    if (!sruRunState) return;
+    sruRunState.feedPreset = SRU_FEED_PRESETS[preset] ? preset : 'medium';
+    const config = getSruFeedPreset();
+    sruRunState.feedControl = config.control;
+    sruRunState.multiplier = config.multiplier;
+}
+
+function updateSruBestStats(score, seconds, recovered) {
+    let improved = false;
+    if (score > state.sruBestScore) {
+        state.sruBestScore = score;
+        improved = true;
+    }
+    if (seconds > state.sruBestTime) {
+        state.sruBestTime = seconds;
+        improved = true;
+    }
+    if (recovered > state.sruBestRecovered) {
+        state.sruBestRecovered = recovered;
+        improved = true;
+    }
+    if (improved) saveProgress();
+    return improved;
+}
+
+function getSruFunFact(resultType, resultTitle) {
+    if (resultType === 'success') return SRU_FUN_FACTS.success;
+    return SRU_FUN_FACTS[resultTitle] || SRU_FUN_FACTS.success;
+}
+
+function createSruState() {
+    return {
+        mode: 'briefing',
+        briefingVariant: 'intro',
+        resultType: '',
+        resultTitle: '',
+        resultDetail: '',
+        resultFact: '',
+        tutorialStep: 0,
+        countdown: 0,
+        paused: false,
+        certifiedPulse: false,
+        onlineSeconds: 0,
+        stableSeconds: 0,
+        stableStreak: 0,
+        score: 0,
+        multiplier: SRU_FEED_PRESETS.medium.multiplier,
+        recoveredTons: 0,
+        throughput: SRU_FEED_PRESETS.medium.control,
+        recovery: 86,
+        thermal: 52,
+        emissions: 48,
+        condenserLevel: 50,
+        feedControl: SRU_FEED_PRESETS.medium.control,
+        airControl: 48,
+        drainControl: 55,
+        feedPreset: 'medium',
+        feedSulfur: 48,
+        targetAir: 48,
+        drawHeld: false,
+        drawPulseRemaining: 0,
+        demandBias: 0,
+        activeEvent: null,
+        eventEndsAt: 0,
+        nextEventAt: 0,
+        statusKey: 'intro',
+        statusLockUntil: 0,
+        statusText: 'Match air to the marker and hold the molten sulfur level in the middle band.',
+        objectiveText: 'Finish the 30-second shift with clean ratio control and steady sulfur level.',
+        objectiveProgress: 0,
+        tripCause: '',
+        tripTimers: {
+            thermal: 0,
+            emissions: 0,
+            condenser: 0,
+            levelLow: 0
+        },
+        controlsUsed: { feed: false, air: false, draw: false },
+        tutorialHoldSeconds: 0,
+        qualifiedThisSession: false,
+        zoneBonus: 0,
+        truckOffset: 0
+    };
+}
+
+function setSruStatus(statusKey, statusText, options = {}) {
+    if (!sruRunState) return;
+    const { force = false, holdMs = 650 } = options;
+    const now = (typeof performance !== 'undefined' && typeof performance.now === 'function') ? performance.now() : Date.now();
+
+    if (!force && sruRunState.statusKey === statusKey) {
+        sruRunState.statusText = statusText;
+        return;
+    }
+
+    if (!force && now < (sruRunState.statusLockUntil || 0)) {
+        return;
+    }
+
+    sruRunState.statusKey = statusKey;
+    sruRunState.statusText = statusText;
+    sruRunState.statusLockUntil = now + holdMs;
+}
+
+function setSruControlUsage(key) {
+    if (!sruRunState || (sruRunState.mode !== 'qualification' && sruRunState.mode !== 'endless')) return;
+    sruRunState.controlsUsed[key] = true;
+}
+
+function getSruControlsUsedCount() {
+    if (!sruRunState) return 0;
+    return ['feed', 'air', 'draw'].filter(key => sruRunState.controlsUsed[key]).length;
+}
+
+function isSruStable() {
+    if (!sruRunState) return false;
+    return (
+        sruRunState.recovery >= 84
+        && sruRunState.condenserLevel >= 38
+        && sruRunState.condenserLevel <= 62
+    );
+}
+
+function setSruTripTimer(key, active, dt) {
+    if (!sruRunState) return;
+    sruRunState.tripTimers[key] = active
+        ? sruRunState.tripTimers[key] + dt
+        : Math.max(0, sruRunState.tripTimers[key] - dt * 2.2);
+}
+
+function scheduleNextSruEvent() {
+    if (!sruRunState) return;
+    sruRunState.activeEvent = null;
+    sruRunState.eventEndsAt = 0;
+    sruRunState.nextEventAt = sruRunState.onlineSeconds + 4.8 + Math.random() * 2.2;
+}
+
+function assignSruEvent() {
+    if (!sruRunState || sruRunState.mode !== 'qualification') return;
+    const pool = [
+        { key: 'heavy', label: 'Heavy Sulfur Cut', bias: 12, condenserBoost: 7, scoreBoost: 1.22 },
+        { key: 'lean', label: 'Lean Air Demand', bias: -12, condenserBoost: 0, scoreBoost: 1.18 },
+        { key: 'draw', label: 'Fast Draw Window', bias: 4, condenserBoost: -6, scoreBoost: 1.14 }
+    ];
+    sruRunState.activeEvent = pool[Math.floor(Math.random() * pool.length)];
+    sruRunState.eventEndsAt = sruRunState.onlineSeconds + 2.2 + Math.random() * 1.4;
+    sruRunState.nextEventAt = sruRunState.eventEndsAt + 4.5 + Math.random() * 1.6;
+}
+
+function setSruRunDefaults(mode) {
+    if (!sruRunState) return;
+    sruRunState.mode = mode;
+    sruRunState.briefingVariant = 'intro';
+    sruRunState.resultType = '';
+    sruRunState.resultTitle = '';
+    sruRunState.resultDetail = '';
+    sruRunState.paused = false;
+    sruRunState.countdown = 0;
+    sruRunState.onlineSeconds = 0;
+    sruRunState.stableSeconds = 0;
+    sruRunState.stableStreak = 0;
+    sruRunState.score = 0;
+    sruRunState.multiplier = SRU_FEED_PRESETS.medium.multiplier;
+    sruRunState.recoveredTons = 0;
+    sruRunState.feedPreset = 'medium';
+    sruRunState.feedControl = SRU_FEED_PRESETS.medium.control;
+    sruRunState.airControl = 48;
+    sruRunState.drainControl = 55;
+    sruRunState.drawHeld = false;
+    sruRunState.drawPulseRemaining = 0;
+    sruRunState.throughput = SRU_FEED_PRESETS.medium.control;
+    sruRunState.recovery = 88;
+    sruRunState.thermal = 52;
+    sruRunState.emissions = 48;
+    sruRunState.condenserLevel = 50;
+    sruRunState.feedSulfur = 48;
+    sruRunState.targetAir = 48;
+    sruRunState.demandBias = 0;
+    sruRunState.tripCause = '';
+    sruRunState.tripTimers = { thermal: 0, emissions: 0, condenser: 0, levelLow: 0 };
+    sruRunState.controlsUsed = { feed: true, air: false, draw: false };
+    sruRunState.statusText = 'Bring the air slider onto the live target marker and keep the sulfur level centered.';
+    sruRunState.objectiveProgress = 0;
+    sruRunState.certifiedPulse = false;
+    sruRunState.activeEvent = null;
+    sruRunState.eventEndsAt = 0;
+    sruRunState.nextEventAt = 0;
+    sruRunState.zoneBonus = 0;
+    sruRunState.truckOffset = 0;
+}
+
+function primeSruTutorialStep(stepIndex) {
+    if (!sruRunState) return;
+    sruRunState.mode = 'tutorial';
+    sruRunState.briefingVariant = 'intro';
+    sruRunState.resultType = '';
+    sruRunState.resultTitle = '';
+    sruRunState.resultDetail = '';
+    sruRunState.paused = false;
+    sruRunState.tutorialStep = stepIndex;
+    sruRunState.tutorialHoldSeconds = 0;
+    sruRunState.countdown = 0;
+    sruRunState.drawHeld = false;
+    sruRunState.drawPulseRemaining = 0;
+    sruRunState.tripCause = '';
+    sruRunState.onlineSeconds = 0;
+    sruRunState.stableSeconds = 0;
+    sruRunState.stableStreak = 0;
+    sruRunState.score = 0;
+    sruRunState.multiplier = 1;
+    sruRunState.recoveredTons = 0;
+    sruRunState.objectiveProgress = 0;
+    sruRunState.tripTimers = { thermal: 0, emissions: 0, condenser: 0, levelLow: 0 };
+
+    if (stepIndex === 0) {
+        sruRunState.feedControl = 48;
+        sruRunState.airControl = 28;
+        sruRunState.throughput = 48;
+        sruRunState.thermal = 32;
+        sruRunState.emissions = 78;
+        sruRunState.recovery = 70;
+        sruRunState.condenserLevel = 24;
+        sruRunState.statusText = 'Add air until the flame tightens and the plume clears.';
+        sruRunState.objectiveText = 'Hold the air damper in the green for 1.2s.';
+    } else if (stepIndex === 1) {
+        sruRunState.feedControl = 42;
+        sruRunState.airControl = 47;
+        sruRunState.throughput = 42;
+        sruRunState.thermal = 34;
+        sruRunState.emissions = 20;
+        sruRunState.recovery = 88;
+        sruRunState.condenserLevel = 28;
+        sruRunState.statusText = 'Raise feed without kicking the furnace out of bounds.';
+        sruRunState.objectiveText = 'Hold throughput in the target band for 1.5s.';
+    } else {
+        sruRunState.feedControl = 58;
+        sruRunState.airControl = 52;
+        sruRunState.throughput = 58;
+        sruRunState.thermal = 38;
+        sruRunState.emissions = 18;
+        sruRunState.recovery = 92;
+        sruRunState.condenserLevel = 72;
+        sruRunState.statusText = 'Drain sulfur back to the safe band.';
+        sruRunState.objectiveText = 'Click drain and keep the condenser in green for 1.5s.';
+    }
+}
+
+function startSruTutorial() {
+    startSruQualification();
+}
+
+function startSruQualification() {
+    if (!sruRunState) return;
+    setSruRunDefaults('qualification');
+    sruRunState.countdown = 3;
+    scheduleNextSruEvent();
+    sruRunState.objectiveText = 'Finish the 30-second shift with clean ratio control and steady sulfur level.';
+    updateSruUi();
+}
+
+function startSruEndless() {
+    startSruQualification();
+}
+
+function finishSruRun(type, title, detail) {
+    if (!sruRunState) return;
+    sruRunState.mode = 'result';
+    sruRunState.resultType = type;
+    sruRunState.resultTitle = title;
+    sruRunState.resultDetail = detail;
+    sruRunState.resultFact = getSruFunFact(type, title);
+    sruRunState.paused = false;
+    sruRunState.drawHeld = false;
+    sruRunState.drawPulseRemaining = 0;
+    sruRunState.tripCause = detail;
+    sruRunState.statusText = detail;
+    const improved = updateSruBestStats(
+        Math.round(sruRunState.score),
+        sruRunState.onlineSeconds,
+        sruRunState.recoveredTons
+    );
+    if (type === 'success' && !state.completedUnits.includes('sru')) {
+        markUnitComplete('sru');
+        sruRunState.qualifiedThisSession = true;
+        sruRunState.certifiedPulse = true;
+    }
+    if (type === 'success') {
+        triggerConfetti();
+    }
+    if (improved) {
+        sruRunState.resultDetail = `${detail} New best run saved locally.`;
+    }
+    updateSruUi();
+}
+
+function openGameMapFromSru() {
+    if (sruRunState) {
+        sruRunState.paused = true;
+        sruRunState.drawHeld = false;
+        sruRunState.drawPulseRemaining = 0;
+    }
+    const gameMap = getEl('game-map');
+    if (gameMap) {
+        gameMap.classList.remove('hidden');
+        gameMap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    updateSruUi();
+}
+
+function stepSruLive(dt) {
+    if (!sruRunState || sruRunState.mode !== 'qualification') return;
+    if (sruRunState.countdown > 0) {
+        sruRunState.countdown = Math.max(0, sruRunState.countdown - dt);
+        return;
+    }
+
+    sruRunState.onlineSeconds += dt;
+    if (!sruRunState.activeEvent && sruRunState.onlineSeconds >= sruRunState.nextEventAt) {
+        assignSruEvent();
+    } else if (sruRunState.activeEvent && sruRunState.onlineSeconds >= sruRunState.eventEndsAt) {
+        scheduleNextSruEvent();
+    }
+    const eventBias = sruRunState.activeEvent ? sruRunState.activeEvent.bias : 0;
+    const eventCondenserBoost = sruRunState.activeEvent ? sruRunState.activeEvent.condenserBoost : 0;
+    const eventScoreBoost = sruRunState.activeEvent ? sruRunState.activeEvent.scoreBoost : 1;
+    const feedConfig = getSruFeedPreset();
+    sruRunState.feedSulfur = clampSruValue(
+        48
+        + Math.sin(sruRunState.onlineSeconds * 0.34) * 20
+        + Math.sin(sruRunState.onlineSeconds * 0.93 + 0.8) * 10,
+        18,
+        88
+    );
+    sruRunState.targetAir = clampSruValue(
+        feedConfig.control * 0.64 + (sruRunState.feedSulfur - 50) * 0.58 + eventBias,
+        18,
+        90
+    );
+    sruRunState.throughput = sruLerp(sruRunState.throughput, feedConfig.control, 0.14);
+
+    const signedAirError = sruRunState.airControl - sruRunState.targetAir;
+    const airError = Math.abs(signedAirError);
+    const airUndershoot = sruRunState.targetAir - sruRunState.airControl;
+    const airMatch = clampSruValue(100 - airError * 3.2, 0, 100);
+    const productionDelta = (
+        (feedConfig.production * 0.28)
+        + (sruRunState.feedSulfur / 100) * 0.35
+        + eventCondenserBoost / 100
+        - (sruRunState.drainControl / 100) * 0.75
+    ) * dt * 20;
+    sruRunState.condenserLevel = clampSruValue(sruRunState.condenserLevel + productionDelta, 0, 100);
+    const levelScore = clampSruValue(100 - Math.abs(sruRunState.condenserLevel - 50) * 3.1, 0, 100);
+    const blendedControl = ((airMatch / 100) * 0.6) + ((levelScore / 100) * 0.4);
+    const penalty = (sruRunState.condenserLevel <= 12 || sruRunState.condenserLevel >= 88) ? 0.28 : 1;
+    const effectiveControl = blendedControl * penalty;
+    sruRunState.recovery = airMatch;
+    sruRunState.thermal = levelScore;
+    sruRunState.emissions = sruRunState.feedSulfur;
+
+    const hauledThisStep = dt * (sruRunState.drainControl / 100) * feedConfig.production * (0.18 + effectiveControl * 0.45);
+    sruRunState.recoveredTons += Math.max(0, hauledThisStep);
+    sruRunState.score += dt * 34 * feedConfig.multiplier * (0.25 + effectiveControl * 0.75) * eventScoreBoost;
+    sruRunState.truckOffset += dt * (12 + sruRunState.drainControl * 0.16);
+
+    if (isSruStable()) {
+        sruRunState.stableSeconds += dt;
+        setSruStatus('stable', 'Sweet spot. Ratio is on target and the sulfur seal is holding mid-band.');
+    } else if (sruRunState.activeEvent?.key === 'draw') {
+        setSruStatus('event-draw', 'Fast draw window. Open the drain just enough to hold the seal in the middle.');
+    } else if (sruRunState.activeEvent?.key === 'lean') {
+        setSruStatus('event-lean', 'Lean air demand. Catch the target quickly for a score bump.');
+    } else if (sruRunState.activeEvent?.key === 'heavy') {
+        setSruStatus('event-heavy', 'Heavy sulfur cut moving through. Hold ratio and seal level together.');
+    } else if (sruRunState.condenserLevel <= 16) {
+        setSruStatus('level-low', 'Level dropping. Ease back the drain before blow-through.');
+    } else if (sruRunState.condenserLevel >= 80) {
+        setSruStatus('level-high', 'Level rising. Open the drain before the seal leg floods.');
+    } else if (airUndershoot >= 12) {
+        setSruStatus('air-low-hard', 'Air is too low for this sulfur cut. Catch the red target.');
+    } else if (sruRunState.recovery < 74) {
+        setSruStatus(
+            signedAirError > 0 ? 'air-high' : 'air-low',
+            signedAirError > 0
+                ? 'Air is high for this sulfur cut. Pull back toward the red target.'
+                : 'Air is low for this sulfur cut. Bring the slider onto the target.'
+        );
+    }
+
+    setSruTripTimer('thermal', airUndershoot >= 18, dt);
+    setSruTripTimer('emissions', airError >= 24, dt);
+    setSruTripTimer('condenser', sruRunState.condenserLevel >= 92, dt);
+    setSruTripTimer('levelLow', sruRunState.condenserLevel <= 8, dt);
+
+    if (sruRunState.tripTimers.thermal >= SRU_HEATER_TRIP_SECONDS) {
+        finishSruRun('failure', 'Heater Trip', 'Combustion air stayed too low too long and the reaction furnace tripped on low O2.');
+        return;
+    }
+    if (sruRunState.tripTimers.emissions >= SRU_SO2_TRIP_SECONDS) {
+        finishSruRun('failure', 'SO2 Excursion', 'The air ratio drifted too far off target and pushed the SRU into an SO2 excursion.');
+        return;
+    }
+    if (sruRunState.tripTimers.levelLow >= SRU_LEVEL_TRIP_SECONDS) {
+        finishSruRun('failure', 'Blow Through', 'The drain valve pulled the sulfur leg dry and the unit blew through.');
+        return;
+    }
+    if (sruRunState.tripTimers.condenser >= SRU_LEVEL_TRIP_SECONDS) {
+        finishSruRun('failure', 'Overflow', 'Sulfur backed up in the condenser leg until the SRU overflowed.');
+        return;
+    }
+
+    if (sruRunState.onlineSeconds >= SRU_SHIFT_SECONDS) {
+        finishSruRun(
+            'success',
+            'Shift Complete',
+            !state.completedUnits.includes('sru')
+                ? 'You completed the SRU shift and added it to your V-804 path.'
+                : 'Shift complete. Score is based on air-match quality and sulfur-level control.'
+        );
+    }
+}
+
+function advanceSruFrame(timestamp) {
+    if (!sruRunState || activePhaseId !== 'sru') {
+        sruGameLoop = null;
+        return;
+    }
+
+    if (!sruLoopLastTime) sruLoopLastTime = timestamp;
+    const deltaMs = Math.min(120, timestamp - sruLoopLastTime);
+    sruLoopLastTime = timestamp;
+
+    if (!sruRunState.paused) {
+        sruLoopAccumulator += deltaMs;
+        while (sruLoopAccumulator >= SRU_SIM_STEP_MS) {
+            stepSruLive(SRU_SIM_STEP_MS / 1000);
+            sruLoopAccumulator -= SRU_SIM_STEP_MS;
+        }
+    }
+
+    updateSruUi();
+    sruGameLoop = requestAnimationFrame(advanceSruFrame);
+}
+
+function startSRU(options = {}) {
+    const { skipShowPhase = false } = options;
+    scrollGameIntoView();
+    if (skipShowPhase || activePhaseId === 'sru') {
+        setupSRU();
+        return;
+    }
+    showPhase('sru');
+}
+
+function setupSRU() {
+    cleanupSRUPhase();
+
+    const root = getEl('sru-root');
+    if (!root) return;
+
+    root.innerHTML = buildSruMarkup();
+    sruRunState = createSruState();
+    bindSruDom(root);
+    updateSruUi();
+    sruGameLoop = requestAnimationFrame(advanceSruFrame);
+}
 
 
 /* =========================================
@@ -4967,7 +6364,16 @@ function resetGame() {
     if (saved) {
         wasMapUnlocked = JSON.parse(saved).mapUnlocked;
     }
-    localStorage.setItem('refineryRunProgress', JSON.stringify({ phase: '1', product: null, mapUnlocked: wasMapUnlocked, completedUnits: state.completedUnits, gasGradesCompleted: [] }));
+    localStorage.setItem('refineryRunProgress', JSON.stringify({
+        phase: '1',
+        product: null,
+        mapUnlocked: wasMapUnlocked,
+        completedUnits: state.completedUnits,
+        gasGradesCompleted: [],
+        sruBestScore: state.sruBestScore,
+        sruBestTime: state.sruBestTime,
+        sruBestRecovered: state.sruBestRecovered
+    }));
 
     physicsEngine.world.gravity.y = 1;
     if (typeof vacTimeouts !== 'undefined') vacTimeouts.forEach(clearTimeout);
@@ -5052,6 +6458,15 @@ function loadGame() {
             }
             if (Array.isArray(progress.gasGradesCompleted)) {
                 state.gasGradesCompleted = progress.gasGradesCompleted;
+            }
+            if (Number.isFinite(progress.sruBestScore)) {
+                state.sruBestScore = progress.sruBestScore;
+            }
+            if (Number.isFinite(progress.sruBestTime)) {
+                state.sruBestTime = progress.sruBestTime;
+            }
+            if (Number.isFinite(progress.sruBestRecovered)) {
+                state.sruBestRecovered = progress.sruBestRecovered;
             }
             updateMapUI();
 
@@ -5911,7 +7326,16 @@ function getSmokeSnapshot() {
         sulfurAtoms: document.querySelectorAll('#sulfur-container .physics-body').length,
         vacuumAir: document.querySelectorAll('#vac-container .air-molecule').length,
         pumpLoopActive: Boolean(pumpGameLoop),
-        mapLocked: mapJumpLocked
+        mapLocked: mapJumpLocked,
+        factBrowserActive: factBrowserState.active
+    };
+}
+
+function getTuningSnapshot() {
+    return {
+        desalter: DESALTER_TUNING,
+        hydrotreating: HYDROTREATING_TUNING,
+        factsBrowserCount: getFactBrowserEntries().length
     };
 }
 
@@ -5964,12 +7388,17 @@ if (ENABLE_RUNTIME_ASSERTS && /[?&]smokeTest=1(?:&|$)/i.test(window.location.sea
 window.Game = {
     showPhase,
     startOrResume,
+    openFactsBrowser,
+    nextFact,
+    previousFact,
+    closeFactsBrowser,
     mapJump,
     goToDistillation,
     chooseProduct,
     chooseCokerProduct,
     startPumpSwap,
     startPipeXray,
+    startSRU,
     startProcessing,
     routeToGasoline,
     chooseVacPath,
@@ -5994,8 +7423,34 @@ window.Game = {
     __debug: {
         runSmokeSuite,
         getSmokeSnapshot,
+        getTuningSnapshot,
+        getFactBrowserEntries: () => getFactBrowserEntries().map(({ key, emoji, text }) => ({ key, emoji, text })),
         isStaging: IS_STAGING_PATH,
         assertsEnabled: ENABLE_RUNTIME_ASSERTS
     }
 };
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

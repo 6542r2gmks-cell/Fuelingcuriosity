@@ -1,0 +1,23 @@
+{
+  "name": "fuelingcuriosity",
+  "version": "1.0.0",
+  "description": "",
+  "main": "script.js",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^25.4.0"
+  },
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/6542r2gmks-cell/FuelingCuriosity.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/6542r2gmks-cell/FuelingCuriosity/issues"
+  },
+  "homepage": "https://github.com/6542r2gmks-cell/FuelingCuriosity#readme"
+}
