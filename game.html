@@ -85,10 +85,16 @@
 
 <!-- Fun Fact Overlay (appears between phases) -->
 <div id="fun-fact-overlay" class="fun-fact-overlay" aria-live="polite">
-    <div class="fun-fact-label">Did You Know?</div>
+    <div id="fun-fact-label" class="fun-fact-label">Did You Know?</div>
     <div id="fun-fact-emoji" class="fun-fact-emoji"></div>
     <p id="fun-fact-text" class="fun-fact-text"></p>
-    <span class="fun-fact-tap">Tap anywhere to continue</span>
+    <span id="fun-fact-counter" class="fun-fact-counter hidden"></span>
+    <div id="fun-fact-controls" class="fun-fact-controls hidden">
+        <button id="fun-fact-prev-btn" class="btn btn-secondary interactive-element" type="button" onclick="Game.previousFact()">Previous</button>
+        <button id="fun-fact-next-btn" class="btn interactive-element" type="button" onclick="Game.nextFact()">Next</button>
+        <button id="fun-fact-close-btn" class="btn btn-game interactive-element" type="button" onclick="Game.closeFactsBrowser()">Close</button>
+    </div>
+    <span id="fun-fact-tap" class="fun-fact-tap">Tap anywhere to continue</span>
 </div>
 <!-- PHASE 0: Splash Screen -->
 <section id="phase-0" class="screen active splash-screen" aria-labelledby="splash-title">
@@ -118,8 +124,13 @@
         <span>🚛</span>
     </div>
 
-<button class="btn btn-splash interactive-element" onclick="Game.startOrResume()" aria-label="Start The Great Refinery Run">  🚀 Start the Run!
-    </button>
+    <div class="splash-actions">
+        <button class="btn btn-splash interactive-element" onclick="Game.startOrResume()" aria-label="Start The Great Refinery Run">Start the Run!
+        </button>
+        <button class="btn btn-secondary btn-splash-secondary interactive-element" onclick="Game.openFactsBrowser()" aria-label="Browse all refinery fun facts without playing the game">Just the Facts</button>
+    </div>
+
+    <p class="splash-facts-note">Browse every refinery fun fact. No gameplay. No V-804 credit.</p>
 
     <div class="splash-byline">
         <p>By <strong>Taylor Bloomquist</strong></p>
@@ -618,6 +629,11 @@
     <button id="pxray-restart-btn" class="btn interactive-element hidden" onclick="Game.startPipeXray({ skipShowPhase: true, product: 'diesel', nextPhase: '3' })" style="margin-top: 25px;">Restart Maintenance</button>
 </section>
 
+<!-- SRU Bonus Level -->
+<section id="phase-sru" class="screen" aria-label="Sulfur Recovery Unit Bonus Level">
+    <div id="sru-root" aria-live="polite"></div>
+</section>
+
 </main>
 
 <!-- Game Map (revealed after completion) -->
@@ -627,8 +643,8 @@
     <div id="v804-tracker" class="v804-tracker">
         <span class="v804-label">🏅 V-804 Certification</span>
         <div class="v804-bar-row">
-            <progress id="v804-progress-bar" value="0" max="15"></progress>
-            <strong id="v804-count">0 / 15</strong>
+            <progress id="v804-progress-bar" value="0" max="16"></progress>
+            <strong id="v804-count">0 / 16</strong>
         </div>
     </div>
     <p style="font-size:0.85rem;color:#555;margin:4px 0 8px;">Tap a unit to jump. Green = certified ✅</p>
@@ -651,11 +667,12 @@
         <button data-unit="jetfuel" id="map-jetfuel" onclick="Game.mapJump('4', 'jetfuel')">✈️ Jet Fuel</button>
         <button data-unit="ulsd" id="map-ulsd" onclick="Game.mapJump('4', 'diesel')">🛢️ ULSD</button>
         <button data-unit="logistics" onclick="Game.mapJump('5', 'gasoline')">Logistics</button>
+        <button data-unit="sru" onclick="Game.mapJump('sru')">SRU Bonus</button>
     </div>
 <div id="v804-form" class="v804-form hidden">
   <h3>🎓 V-804 Refinery Explorer Certificate</h3>
   <p style="font-size:0.85rem;color:#555">
-    You've completed all 13 units! Enter your name and choose your Explorer title.
+    You've completed all 16 units! Enter your name and choose your Explorer title.
   </p>
 
   <input type="text"
@@ -747,3 +764,4 @@
 </footer>
 </body>
 </html>
+
