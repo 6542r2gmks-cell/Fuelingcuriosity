@@ -57,6 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
         gasProduct: '87summer',
         gasVolumes: { naphtha: 0, butane: 0, reformate: 0, alkylate: 0, fccgasoline: 0 },
         gasGradesCompleted: [],
+        gasolineIntroShown: false,
+        jetIntroShown: false,
         completedUnits: [],
         jetBatches: [],
         jetBatchIndex: 0,
@@ -267,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'jetfuel', label: 'Jet Fuel Inspection & Certification' },
         { id: 'ulsd', label: 'ULSD Treatment & Additives' },
         { id: 'logistics', label: 'Product Logistics & Delivery' },
-        { id: 'sru', label: 'Sulfur Recovery Unit (SRU) Bonus Challenge' }
+        { id: 'sru', label: 'Sulfur Recovery Unit (SRU)' }
     ];
     const V804_TOTAL_UNITS = V804_UNITS.length;
     function markUnitComplete(unitId) {
@@ -433,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getBlendingFunFact(product = state.product) {
         const facts = {
             gasoline: { emoji: '⛽', text: "Refineries run lab tests on every gasoline blend before it ships. Octane, Reid Vapor Pressure, and distillation curves are all checked against regulated seasonal specs. A $0.10/gallon optimization decision at the blender can translate to millions annually, so refineries target <0.3 giveaway. Not shown, 10% Ethanol boosts octane by ~3.5 and RVP by 1 PSI significantly changing recipes." },
-            jetfuel:  { emoji: '✈️', text: "Jet fuel lab certification is among the most rigorous in the industry. Flash point, freeze point, thermal stability, and a density check are all required before any batch is cleared for aviation use. One off-spec batch can contaminate an entire airport tank farm." },
+            jetfuel:  { emoji: '✈️', text: "Jet fuel lab certification is among the most rigorous in the industry. Flash point, freeze point, sulfur content, density, and smoke point are all checked before any batch is cleared for aviation use. One off-spec batch can contaminate an entire airport tank farm." },
             diesel:   { emoji: '🛢️', text: "Ultra-Low Sulfur Diesel is treated with additives at the ppm level — that's parts per million, roughly equivalent to a few drops in a swimming pool. Getting the dosage exactly right is both a quality and a cost issue." }
         };
         return facts[product] || facts.gasoline;
@@ -506,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return ULSD_TREATMENT_POOL.map(treatment => ({
             key: `ulsd_${treatment.id}`,
             emoji: treatment.emoji,
-            text: `${treatment.name} is dosed into ULSD in tiny ppm amounts. In the game it targets ${treatment.target} ${treatment.unit}, and its job is to ${treatment.hint.charAt(0).toLowerCase()}${treatment.hint.slice(1)}.`
+            text: `${treatment.name} is dosed into ULSD in tiny ppm amounts. ${treatment.hint}. The game target is ${treatment.target} ${treatment.unit}.`
         }));
     }
 
@@ -515,7 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const entries = [{
             key: 'jet_certification',
             emoji: '✈️',
-            text: 'Jet A certification requires multiple checks before any cargo tank is approved. One off-spec batch can contaminate an entire airport tank farm, which is why the game makes you reject bad batches before they reach cargo.'
+            text: 'Jet A certification requires multiple checks before any cargo tank is approved. Flash point, freeze point, sulfur content, density, and smoke point all help show whether the fuel is safe to handle and clean enough to burn in turbine equipment.'
         }];
         const jetFactText = {
             flash: 'Flash point measures how hot the fuel must get before it gives off enough vapor to ignite. Jet fuel needs a high flash point so it is safer to store, transfer, and handle on the ground.',
@@ -903,6 +905,7 @@ function cleanupLabPhase() {
         state.ulsdTimerInterval = null;
     }
     state.gasolineIntroShown = false;
+    state.jetIntroShown = false;
     clearTimerCollection(typeof ulsdToteIntervals !== 'undefined' ? ulsdToteIntervals : null);
 }
 
@@ -1043,6 +1046,7 @@ function showPhase(phaseId, options = {}) {
 
     cancelFunFactFlow();
     closeGasolineIntroCard();
+    closeJetIntroCard();
 
     phaseActivationToken += 1;
     const activationToken = phaseActivationToken;
@@ -3003,7 +3007,7 @@ function setupCokerFrac() {
                 <div class="tower-body">
                     <button class="btn tower-btn top interactive-element" onclick="Game.chooseCokerProduct('lpg')">💨 Coker LPG</button>
                     <button class="btn tower-btn middle interactive-element" onclick="Game.chooseCokerProduct('naphtha')">🧪 Coker Naphtha (Gasoline)</button>
-                    <button class="btn tower-btn middle interactive-element" style="background: #3182ce;" onclick="Game.chooseCokerProduct('diesel')">🚛 Coker ULSD (Diesel)</button>
+                    <button class="btn tower-btn middle interactive-element" style="background: #3182ce;" onclick="Game.chooseCokerProduct('diesel')">🚛 Coker Diesel</button>
                     <button class="btn tower-btn bottom interactive-element" onclick="Game.chooseCokerProduct('gasoil')">🔥 Heavy Gas Oil (To FCC)</button>
                 </div>
                 <div class="tower-base" style="height: auto; padding: 12px; background: #1a202c; color: var(--color-gray-400); border-radius: 4px; margin-top: 8px; text-align: center; font-weight: bold; border: 2px solid #2d3748;">
@@ -3637,7 +3641,7 @@ function showGasRecipePopup() {
                 ${compRows}
             </div>
             <div class="recipe-result">
-                Expected → <strong>Octane ${recipe.octane}</strong> RON, <strong>RVP ${recipe.rvp}</strong> psi
+                Expected → <strong>Octane ${recipe.octane}</strong> OCT, <strong>RVP ${recipe.rvp}</strong> psi
             </div>
             <p class="recipe-tip">💡 ${recipe.tip}</p>
         </div>
@@ -3681,6 +3685,41 @@ function showGasolineIntroCard() {
 
 function closeGasolineIntroCard() {
     const overlay = document.querySelector('.gasoline-intro-overlay');
+    if (overlay) overlay.remove();
+}
+
+function showJetIntroCard() {
+    const existing = document.querySelector('.jet-intro-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'gasoline-intro-overlay jet-intro-overlay';
+    overlay.innerHTML = `
+        <div class="gasoline-intro-card jet-intro-card">
+            <div class="gasoline-intro-kicker">Jet Release Basics</div>
+            <h3>Approve Only On-Spec Fuel</h3>
+            <p>Each Jet A certificate checks <strong>flash point</strong>, <strong>freeze point</strong>, <strong>sulfur</strong>, <strong>density</strong>, and <strong>smoke point</strong> before fuel reaches the cargo tank.</p>
+            <div class="gasoline-intro-costs">
+                <span><strong>Flash Point</strong> safer ground handling</span>
+                <span><strong>Freeze Point</strong> stays fluid at altitude</span>
+                <span><strong>Sulfur</strong> cleaner, less corrosive fuel</span>
+                <span><strong>Density</strong> consistent energy per tank volume</span>
+                <span><strong>Smoke Point</strong> cleaner turbine flame</span>
+            </div>
+            <p class="gasoline-intro-note">Reject any off-spec batch before it enters cargo. One bad approval can contaminate the whole tank.</p>
+            <button class="btn interactive-element" id="jet-intro-start">Start Inspecting</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay || event.target.id === 'jet-intro-start') {
+            overlay.remove();
+        }
+    });
+}
+
+function closeJetIntroCard() {
+    const overlay = document.querySelector('.jet-intro-overlay');
     if (overlay) overlay.remove();
 }
 
@@ -3735,7 +3774,7 @@ function evaluateGasBlend(volumes, productKey) {
     if (blend.octane < spec.minOctane) {
         return {
             grade: 'fail', blend,
-            msg: `Under octane spec — ${blend.octane} RON vs ${spec.minOctane} min. Selling this would cause engine knocking and EPA fines. Try adding more Reformate or less Naphtha!`
+            msg: `Under octane spec — ${blend.octane} OCT vs ${spec.minOctane} min. Selling this would cause engine knocking and EPA fines. Try adding more Reformate or less Naphtha!`
         };
     }
     if (blend.rvp > spec.maxRVP) {
@@ -3754,7 +3793,7 @@ function evaluateGasBlend(volumes, productKey) {
     }
     return {
         grade: 'pass', blend, cost,
-        msg: `Perfect ${spec.label} blend! ${blend.octane} RON, ${blend.rvp} psi RVP — tight on spec with a ${cost.label.toLowerCase()} cost profile (${cost.dollars}).`
+        msg: `Perfect ${spec.label} blend! ${blend.octane} OCT, ${blend.rvp} psi RVP — tight on spec with a ${cost.label.toLowerCase()} cost profile (${cost.dollars}).`
     };
 }
 
@@ -3768,7 +3807,7 @@ function updateBlendDisplay(volumes, productKey) {
     const rvpOk = blend.total > 0 && blend.rvp <= spec.maxRVP;
     readout.innerHTML = `
         <span style="color:${blend.total > 0 ? (octaneOk ? '#2e7d32' : '#c53030') : '#666'}">
-            Octane: <strong>${blend.total > 0 ? blend.octane + ' RON' : '--'}</strong>
+            Octane: <strong>${blend.total > 0 ? blend.octane + ' OCT' : '--'}</strong>
         </span>
         <span style="color:${blend.total > 0 ? (rvpOk ? '#2e7d32' : '#c53030') : '#666'}">
             RVP: <strong>${blend.total > 0 ? blend.rvp + ' psi' : '--'}</strong>
@@ -3801,7 +3840,7 @@ const ULSD_TREATMENT_POOL = [
     },
     {
         id: 'lub', name: 'Lubricity Additive', unit: 'ppm', target: 300, step: 25, color: '#34d399', emoji: '⚙️',
-        hint: 'Ultra-low sulfur diesel needs to slip and slide through pipes; this helps it'
+        hint: 'Helps protect pumps and injectors after sulfur removal strips away natural lubricity'
     },
     {
         id: 'stat', name: 'Static Dissipator', unit: 'ppm', target: 2, step: 1, color: '#a78bfa', emoji: '⚡',
@@ -4199,7 +4238,7 @@ function setupMinigame() {
                 <div>
                     <h3 style="margin: 0 0 4px 0;">✈️ Jet A — Certificate Of Analysis</h3>
                     <p style="font-size:0.75rem;color:#555;margin:0;max-width:220px;">
-                        Approve on-spec fuel to fill the Cargo Tank. One bad batch ruins the whole cargo!
+                        Approve on-spec fuel to fill the Cargo Tank. Check flash, freeze, sulfur, density, and smoke before one bad batch ruins the whole cargo.
                     </p>
                 </div>
                 <div style="text-align: right; font-size: 0.8rem; flex-shrink: 0;">
@@ -4240,6 +4279,10 @@ function setupMinigame() {
             </div>
         `;
 
+        if (!state.jetIntroShown) {
+            showJetIntroCard();
+            state.jetIntroShown = true;
+        }
 
         if (testBtn) {
             testBtn.innerText = '🧪 Certify Jet Tank';
@@ -4259,7 +4302,7 @@ function setupMinigame() {
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
                 <div style="text-align: left;">
                     <h3 style="margin:0 0 2px">⚗️ ULSD Treatment</h3>
-                    <p style="font-size:0.75rem;color:#555;margin:0">Add precise ppm doses.</p>
+                    <p style="font-size:0.75rem;color:#555;margin:0">Add precise ppm doses. ppm means tiny amounts, so accuracy protects fuel systems without wasting additive.</p>
                 </div>
                 <div class="ulsd-timer-bar" style="margin:0; padding:4px 10px;">
                     ⏱ <strong id="ulsd-timer">60</strong>s
