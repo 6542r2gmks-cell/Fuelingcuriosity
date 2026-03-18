@@ -125,7 +125,11 @@ async function main() {
     const hasUlsdFacts = factEntries.some(entry => entry.key === 'ulsd_lub');
     const hasJetFacts = factEntries.some(entry => entry.key === 'jet_flash');
     const hasGasGradeFacts = factEntries.some(entry => entry.key === 'gas_grade_87summer');
+    const ulsdLubricityFact = factEntries.find(entry => entry.key === 'ulsd_lub');
+    const jetCertificationFact = factEntries.find(entry => entry.key === 'jet_certification');
     record('Facts browser uses neutral logistics wording', Boolean(neutralTruckFact && !/^Great choice!|^Awesome!|^Smart pick!|^Great thinking!|^Excellent!/i.test(neutralTruckFact.text)), neutralTruckFact ? neutralTruckFact.text : 'missing');
+    record('ULSD facts explain lubricity as wear protection', Boolean(ulsdLubricityFact && /pumps and injectors/i.test(ulsdLubricityFact.text) && !/slip and slide/i.test(ulsdLubricityFact.text)), ulsdLubricityFact ? ulsdLubricityFact.text : 'missing');
+    record('Jet facts use the active spec set without thermal stability', Boolean(jetCertificationFact && /sulfur content/i.test(jetCertificationFact.text) && /smoke point/i.test(jetCertificationFact.text) && !/thermal stability/i.test(jetCertificationFact.text)), jetCertificationFact ? jetCertificationFact.text : 'missing');
 
     const tuningSnapshot = await page.evaluate(() => window.Game.__debug.getTuningSnapshot());
     record('Desalter ultra-fast tier is disabled', tuningSnapshot.desalter.allowUltraFast === false, JSON.stringify(tuningSnapshot.desalter));
@@ -144,15 +148,38 @@ async function main() {
       await page.getByRole('button', { name: 'Start Blending' }).click();
       await page.waitForTimeout(150);
     }
+    await page.locator('#recipe-help-btn').click().catch(() => {});
+    await page.waitForTimeout(150);
+    const gasRecipeText = await page.locator('.recipe-popup .recipe-result').textContent().catch(() => '');
+    record('Gasoline recipe popup uses OCT terminology', Boolean(gasRecipeText && gasRecipeText.includes('OCT') && !gasRecipeText.includes('RON')), `text=${gasRecipeText}`);
+    await page.locator('#recipe-close-btn').click().catch(() => {});
     const costTags = await page.locator('.comp-cost-tag').count();
     const blendReadoutText = await page.locator('#blend-live-readout').textContent().catch(() => '');
     record('Gasoline component cards show cost tiers', costTags >= 5, `count=${costTags}`);
     record('Gasoline live blend HUD includes cost readout', Boolean(blendReadoutText && blendReadoutText.includes('Cost')), `text=${blendReadoutText}`);
 
+    await page.evaluate(() => window.Game.mapJump('4', 'jetfuel'));
+    await page.waitForTimeout(900);
+    const jetIntroVisible = await page.locator('.jet-intro-overlay').isVisible().catch(() => false);
+    const jetIntroText = await page.locator('.jet-intro-card').textContent().catch(() => '');
+    record('Jet game shows the first-run explainer on entry', jetIntroVisible, '');
+    record('Jet intro explains the live release checks', Boolean(jetIntroText && jetIntroText.includes('sulfur') && jetIntroText.includes('smoke point') && !/thermal stability/i.test(jetIntroText)), `text=${jetIntroText}`);
+    if (jetIntroVisible) {
+      await page.getByRole('button', { name: 'Start Inspecting' }).click();
+      await page.waitForTimeout(150);
+    }
+
+    await page.evaluate(() => window.Game.mapJump('4', 'diesel'));
+    await page.waitForTimeout(900);
+    const ulsdHeaderText = await page.locator('#phase-4').textContent().catch(() => '');
+    record('ULSD game explains ppm accuracy as fuel-system protection', Boolean(ulsdHeaderText && /ppm means tiny amounts/i.test(ulsdHeaderText) && /protects fuel systems/i.test(ulsdHeaderText)), `text=${ulsdHeaderText}`);
+
     await page.evaluate(() => window.Game.showPhase('sru', { skipSave: true }));
     await page.waitForTimeout(600);
     const sruVisible = await page.locator('#sru-stage').isVisible();
     record('SRU stage renders', sruVisible, '');
+    const sruMapLabel = await page.locator('button[data-unit="sru"]').textContent().catch(() => '');
+    record('SRU map button uses Sulfur Recovery wording', Boolean(sruMapLabel && sruMapLabel.includes('Sulfur Recovery')), `text=${sruMapLabel}`);
 
     const startShiftButton = page.getByRole('button', { name: /Start .*Shift/ });
     try {
@@ -264,6 +291,21 @@ async function main() {
     await page.waitForTimeout(1200);
     const sulfurAtoms = await page.locator('#sulfur-container .physics-body').count();
     record('Hydrotreating still spawns sulfur atoms after map jump', sulfurAtoms > 0, `count=${sulfurAtoms}`);
+
+    await page.goto(`http://127.0.0.1:${PORT}/index.html`);
+    await page.waitForLoadState('domcontentloaded');
+    await page.evaluate(() => {
+      window.open = () => null;
+      const originalSetTimeout = window.setTimeout;
+      window.setTimeout = (fn) => {
+        fn();
+        return 1;
+      };
+      window.handleEmailSubmit();
+      window.setTimeout = originalSetTimeout;
+    });
+    const activityPackLabel = await page.locator('#download-submit-btn').textContent().catch(() => '');
+    record('Homepage activity-pack CTA resets to the current product label after submit', Boolean(activityPackLabel && activityPackLabel.includes('Get Free Activity Pack') && !activityPackLabel.includes('Download Pages')), `text=${activityPackLabel}`);
 
     console.table(results);
 
