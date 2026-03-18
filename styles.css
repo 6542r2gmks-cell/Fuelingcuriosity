@@ -221,7 +221,8 @@ button:focus:not(:focus-visible),
 .button-group {
   display: flex;
   justify-content: center;
-  gap: 20px;
+  align-items: flex-start;
+  gap: 28px;
   margin-top: 25px;
   flex-wrap: wrap;
 }
@@ -2650,41 +2651,7 @@ PHASE 1: EXTRACTION
   margin-top: 40px;
 }
 
-/* =========================================
-   ACCESSIBILITY: Reduced Motion
-========================================= */
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
 
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-
-  .screen {
-    transition: none;
-  }
-
-  #oil-level,
-  .coke-fill,
-  .liquid-layer {
-    transition: none;
-  }
-
-  .fun-fact-overlay {
-    transition: none;
-  }
-
-  .transport-vehicle {
-    animation: none !important;
-    left: 45% !important;
-  }
-}
 
 /* =========================================
    PRINT STYLESHEET
@@ -6717,10 +6684,6 @@ button,
   }
 }
 }
-
-/* =========================================
-   SRU BONUS LEVEL
-========================================= */
 #phase-sru,
 #phase-sru #sru-root {
   width: 100%;
@@ -7552,3 +7515,216 @@ button,
 
 
 
+/* =========================================
+   HOMEPAGE ENHANCEMENTS
+
+.review-badge {
+  display: block;
+  text-align: center;
+  margin: 16px auto 26px auto;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: #fff7e6;
+  color: var(--color-navy);
+  font-weight: 800;
+  border: 1px solid #f1d08a;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  width: fit-content;
+}
+
+.review-badge-text {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.header img {
+  margin-bottom: 10px;
+}
+
+.header h1 {
+  margin-top: 10px;
+  margin-bottom: 14px;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+}
+
+.header p {
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 1.15rem;
+}
+
+.button-group > a {
+  flex: 0 0 auto;
+}
+
+.btn.btn-primary {
+  min-width: 280px;
+  min-height: 64px;
+  align-self: center;
+}
+
+.play-game-cta {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  text-decoration: none;
+}
+
+.play-game-thumb {
+  width: 320px;
+  max-width: 90vw;
+  height: auto;
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(26, 54, 93, 0.28);
+  transition: transform 0.18s ease;
+}
+
+.play-game-btn {
+  min-width: 320px;
+  justify-content: center;
+}
+
+.play-game-cta:hover .play-game-thumb {
+  transform: scale(1.03);
+}
+
+.cta-helper {
+  margin-top: 18px;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+
+.email-form-note--strong {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-navy);
+  margin-bottom: 6px;
+}
+
+.section-intro {
+  max-width: 760px;
+  margin: 0 auto 26px auto;
+  text-align: center;
+}
+
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  margin-top: 28px;
+}
+
+.review-card {
+  background: var(--color-white);
+  padding: 28px 24px 24px;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--color-gray-200);
+  text-align: left;
+  position: relative;
+}
+
+.review-card::before {
+  content: "“";
+  position: absolute;
+  top: 8px;
+  left: 14px;
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--color-gray-200);
+  font-weight: 900;
+}
+
+.review-card--featured {
+  border-top: 4px solid var(--color-orange);
+}
+
+.review-stars {
+  font-size: 1.1rem;
+  margin-bottom: 14px;
+  color: var(--color-orange-dark);
+  font-weight: 700;
+}
+
+.review-card p {
+  margin: 0;
+  color: var(--color-gray-700);
+}
+
+.review-card p + p {
+  margin-top: 14px;
+}
+
+.journey-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.journey-step {
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-200);
+  border-radius: 999px;
+  padding: 10px 18px;
+  box-shadow: var(--shadow-card);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-navy);
+  white-space: nowrap;
+}
+
+.journey-arrow {
+  font-size: 1.35rem;
+  color: var(--color-orange);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.audience-section .feature-box {
+  border-top: 4px solid var(--color-teal);
+}
+
+@media (max-width: 900px) {
+  .review-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .button-group {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .btn.btn-primary,
+  .play-game-btn {
+    width: 100%;
+    max-width: 340px;
+    min-width: 0;
+  }
+
+  .play-game-thumb {
+    width: 100%;
+    max-width: 340px;
+  }
+
+  .journey-arrow {
+    display: none;
+  }
+
+  .journey-row {
+    flex-direction: column;
+  }
+
+  .journey-step {
+    width: 100%;
+    max-width: 320px;
+    text-align: center;
+  }
+}
