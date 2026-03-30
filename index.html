@@ -25,6 +25,7 @@
     <meta name="twitter:title" content="Fueling Curiosity | How Oil Refineries Work for Kids, Parents, and Educators">
     <meta name="twitter:description" content="A STEM book and interactive game that make petroleum refining understandable, approachable, and fun.">
     <meta name="twitter:image" content="https://www.fuelingcuriosity.com/book-preview.jpg">
+    <meta name="twitter:image:alt" content="Cover of the book Fueling Curiosity">
 
     <script type="application/ld+json">
     {
@@ -43,7 +44,7 @@
       "aggregateRating": {
         "@type": "AggregateRating",
         "ratingValue": "5",
-        "reviewCount": "5"
+        "reviewCount": "3"
       },
       "review": [
         {
@@ -88,10 +89,11 @@
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
+
       gtag('config', 'G-9HQSSELPK5');
+      gtag('config', 'AW-18046036427');
     </script>
 </head>
-
 
 <body>
 
@@ -106,10 +108,10 @@
 
 <header class="header">
     <img src="FuelingCover.jpg" alt="Fueling Curiosity book cover showing a colorful illustrated refinery with the alphabet letters A through Z">
-<div class="review-badge">
-    ⭐⭐⭐⭐⭐
-    <div class="review-badge-text">5-star rated on Amazon</div>
-</div>
+    <div class="review-badge">
+        ⭐⭐⭐⭐⭐
+        <div class="review-badge-text">5-star rated on Amazon</div>
+    </div>
     <h1>Fueling Curiosity: The ABCs of Refining</h1>
     <p style="max-width: 760px; margin: 0 auto; font-size: 1.15rem;">
         A STEM book that explains how oil refineries work — for curious kids, parents, teachers, and engineers.
@@ -118,7 +120,6 @@
 
 <main class="container">
 
-    <!-- Primary CTA -->
     <section class="action-box">
         <h2>Discover the World Behind the Fuel We Use Every Day</h2>
         <p style="max-width: 760px; margin: 0 auto 18px auto;">
@@ -126,15 +127,32 @@
         </p>
 
         <div class="button-group">
-            <a href="https://www.amazon.com/Fueling-Curiosity-Refining-Taylor-Bloomquist/dp/B0GP1XS7KW?crid=13FAKUKYF3W4S&dib=eyJ2IjoiMSJ9.DxFcy8J4xfsiF8dVYbkS1OoXX2gPXxtgJiRWf-Q9vseT5e2-ZEb84l_ef1e9zFwN.RDJXO29XpMaNEeBwLo0WhWmD_ueXTKw-GAWvQe1G9C0&dib_tag=se&keywords=fueling+curiosity&qid=1772510171&s=books&sprefix=fueling+curiosity%2Cstripbooks%2C177&sr=1-1&linkCode=ll2&tag=fuelingcurios-20&linkId=f8a606c221cdd89bf012be4624909b0a&language=en_US&ref_=as_li_ss_tl"
+            <a href="https://www.amazon.com/dp/B0GP1XS7KW?tag=fuelingcurios-20"
                target="_blank"
                rel="noopener noreferrer"
                class="btn btn-primary"
-               onclick="if(typeof gtag==='function'){gtag('event','select_content',{'content_type':'amazon_click','item_id':'homepage_cta'});}">
+               onclick="if(typeof gtag==='function'){
+                 gtag('event','generate_lead',{
+                   content_type:'amazon_click',
+                   item_id:'homepage_cta'
+                 });
+                 gtag('event','conversion',{
+                   send_to:'AW-18046036427/WzU9CJiQ7JEcEMvTgp1D',
+                   value:1.0,
+                   currency:'USD'
+                 });
+               }">
                📚 Get the Book on Amazon
             </a>
 
-            <a href="game.html" class="play-game-cta" onclick="if(typeof gtag==='function'){gtag('event','select_content',{'content_type':'game_click','item_id':'homepage_game_cta'});}">
+            <a href="game.html"
+               class="play-game-cta"
+               onclick="if(typeof gtag==='function'){
+                 gtag('event','select_content',{
+                   content_type:'game_click',
+                   item_id:'homepage_game_cta'
+                 });
+               }">
                 <img
                   src="social-preview.jpg"
                   alt="The Great Refinery Run – Interactive Refinery Game"
@@ -145,37 +163,36 @@
                 </span>
             </a>
         </div>
+
         <p class="footer-disclosure">
             As an Amazon Associate, we earn from qualifying purchases. This website is intended for parents, educators, and industry professionals.
         </p>
 
-        <!-- Email Signup Form -->
         <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;" title="Form submission target"></iframe>
 
-        <form action="https://fuelingcuriosity.us2.list-manage.com/subscribe/post?u=02e6b77d4f08f66dcd6e46354&amp;id=a5e67c4b9a&amp;f_id=003d4ae0f0" method="POST" target="hidden_iframe" onsubmit="handleEmailSubmit()" style="margin-top: 20px;">
-        
+        <form action="https://fuelingcuriosity.us2.list-manage.com/subscribe/post?u=02e6b77d4f08f66dcd6e46354&amp;id=a5e67c4b9a&amp;f_id=003d4ae0f0"
+              method="POST"
+              target="hidden_iframe"
+              onsubmit="handleEmailSubmit()"
+              style="margin-top: 20px;">
+
             <p class="email-form-note email-form-note--strong">Want the free STEM activity pack?</p>
-        
+
             <p class="email-form-note">Get printable refinery coloring pages, vocabulary, discussion prompts, and a simple classroom activity.</p>
-        
+
             <div class="email-form-row">
-        
+
                 <input type="email" name="EMAIL" placeholder="Enter your email" required class="email-input" aria-label="Email address for free STEM activity pack">
-        
+
                 <div class="honeypot" aria-hidden="true">
-        
                     <input type="text" name="b_02e6b77d4f08f66dcd6e46354_a5e67c4b9a" tabindex="-1" value="">
-        
                 </div>
-        
+
                 <button type="submit" id="download-submit-btn" class="btn btn-secondary">📥 Get Free Activity Pack</button>
-        
             </div>
-        
         </form>
     </section>
 
-<!-- About the Book -->
     <section>
         <h2>What happens to crude oil after it comes out of the ground?</h2>
         <p>
@@ -185,7 +202,6 @@
         </p>
     </section>
 
-    <!-- Features -->
     <section class="features">
         <div class="feature-box">
             <h3>For Kids</h3>
@@ -200,24 +216,24 @@
             <p>An accurate window into one of the most complex industrial systems in the world—because understanding how things work is the first step toward building what comes next.</p>
         </div>
     </section>
-    <!-- Sneak Peek Videos -->
+
     <section class="sneak-peek-section">
         <h2>A Sneak Peek Inside the Refinery...</h2>
         <div class="video-grid">
             <article class="video-card">
                 <h3><span class="big-letter">Aa</span> is for Acid</h3>
-                <video src="acid-animation.mp4" autoplay loop muted playsinline poster="" aria-label="Animation explaining how acid is used in refining"></video>
+                <video src="acid-animation.mp4" autoplay loop muted playsinline aria-label="Animation explaining how acid is used in refining"></video>
                 <p>Refineries use very strong acids to help small fuel pieces stick together. This makes clean, valuable gasoline.</p>
             </article>
 
             <article class="video-card">
                 <h3><span class="big-letter">Ff</span> is for FCC</h3>
-                <video src="fcc-animation.mp4" autoplay loop muted playsinline poster="" aria-label="Animation of the Fluid Catalytic Cracking unit"></video>
+                <video src="fcc-animation.mp4" autoplay loop muted playsinline aria-label="Animation of the Fluid Catalytic Cracking unit"></video>
                 <p>The FCC is the refinery's molecule splitter. It uses tons of tiny helper beads, called catalyst. These beads break big oil molecules into smaller, useful pieces for gasoline and diesel.</p>
             </article>
         </div>
     </section>
-        <!-- Why this book exists -->
+
     <section class="author-section">
         <div>
             <h2>Why This Book Exists</h2>
@@ -231,32 +247,32 @@
             </p>
         </div>
     </section>
-    <!-- Reviews -->
-<section class="sneak-peek-section" aria-labelledby="reviews-title">
-    <h2 id="reviews-title">What Readers Are Saying</h2>
-    <p class="section-intro">
-        Early readers are loving the combination of real refinery science, approachable explanations, and the companion game.
-    </p>
 
-    <div class="review-grid">
-        <article class="review-card review-card--featured">
-            <div class="review-stars">⭐⭐⭐⭐⭐</div>
-            <p>What a great read. This totally “fueled” my curiosity in what the refinery is like. It was cool to see how the cracking process worked to separate the oil into different useable fuels.</p>
-            <p style="margin-top:12px;">If the book wasn’t enough the game that came along with it was more fun after knowing a bit about the process. I am looking forward to what could be next.</p>
-        </article>
+    <section class="sneak-peek-section" aria-labelledby="reviews-title">
+        <h2 id="reviews-title">What Readers Are Saying</h2>
+        <p class="section-intro">
+            Early readers are loving the combination of real refinery science, approachable explanations, and the companion game.
+        </p>
 
-        <article class="review-card">
-            <div class="review-stars">⭐⭐⭐⭐⭐</div>
-            <p>This is an excellent book for children to learn about the science of oil refining. I bought one for my kids, ages 11, 9, and 7. I also purchased one for my son's 5th grade STEM class.</p>
-        </article>
+        <div class="review-grid">
+            <article class="review-card review-card--featured">
+                <div class="review-stars">⭐⭐⭐⭐⭐</div>
+                <p>What a great read. This totally “fueled” my curiosity in what the refinery is like. It was cool to see how the cracking process worked to separate the oil into different useable fuels.</p>
+                <p style="margin-top:12px;">If the book wasn’t enough the game that came along with it was more fun after knowing a bit about the process. I am looking forward to what could be next.</p>
+            </article>
 
-        <article class="review-card">
-            <div class="review-stars">⭐⭐⭐⭐⭐</div>
-            <p>Amazing book for kids and adults who are curious about the refining industry at a basic level. Highly recommend!</p>
-        </article>
-    </div>
-</section>
-    <!-- Schools & Industry Partners -->
+            <article class="review-card">
+                <div class="review-stars">⭐⭐⭐⭐⭐</div>
+                <p>This is an excellent book for children to learn about the science of oil refining. I bought one for my kids, ages 11, 9, and 7. I also purchased one for my son's 5th grade STEM class.</p>
+            </article>
+
+            <article class="review-card">
+                <div class="review-stars">⭐⭐⭐⭐⭐</div>
+                <p>Amazing book for kids and adults who are curious about the refining industry at a basic level. Highly recommend!</p>
+            </article>
+        </div>
+    </section>
+
     <section class="action-box action-box--partners">
         <h2>For Schools &amp; Industry Partners</h2>
         <p style="max-width: 700px; margin: 0 auto 20px auto; font-size: 1.1rem;">
@@ -272,7 +288,6 @@
         </div>
     </section>
 
-    <!-- Author -->
     <section class="author-section">
         <div>
             <h2>About the Author</h2>
@@ -297,18 +312,21 @@
 
 <script>
     function handleEmailSubmit() {
-        // 1. Open the PDF immediately
         window.open('fueling-curiosity-stem-activity-pack.pdf', '_blank');
 
-        // 2. Track conversion in GA4
         if (typeof gtag === 'function') {
             gtag('event', 'generate_lead', {
-                'event_category': 'email_signup',
-                'event_label': 'STEM Activity Pack Download'
+                content_type: 'email_signup',
+                item_id: 'activity_pack_download'
+            });
+
+            gtag('event', 'conversion', {
+                send_to: 'AW-18046036427/WzU9CJiQ7JEcEMvTgp1D',
+                value: 1.0,
+                currency: 'USD'
             });
         }
 
-        // 3. Update button state after a brief delay for form submission
         setTimeout(function() {
             var btn = document.getElementById('download-submit-btn');
             if (btn) {
@@ -316,21 +334,18 @@
                 btn.style.backgroundColor = "#48bb78";
                 btn.disabled = true;
 
-                // Reset after 60 seconds
                 setTimeout(function() {
-                    btn.innerText = "Get Free Activity Pack";
+                    btn.innerText = "📥 Get Free Activity Pack";
                     btn.style.backgroundColor = "";
                     btn.disabled = false;
                 }, 60000);
             }
 
-            // Clear email input
             var emailInput = document.querySelector('input[name="EMAIL"]');
             if (emailInput) emailInput.value = '';
         }, 300);
     }
 </script>
-
 
 </body>
 </html>
