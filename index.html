@@ -453,6 +453,27 @@
         }, 300);
     }
 </script>
+<script>
+let scrollEvents = [25, 50, 75, 90];
+let triggered = {};
 
+window.addEventListener('scroll', function () {
+  let scrollPercent = (window.scrollY + window.innerHeight) / document.body.scrollHeight * 100;
+
+  scrollEvents.forEach(function (point) {
+    if (!triggered[point] && scrollPercent >= point) {
+      triggered[point] = true;
+
+      if (typeof gtag === 'function') {
+        gtag('event', 'scroll_depth', {
+          event_category: 'engagement',
+          event_label: point + '%',
+          value: point
+        });
+      }
+    }
+  });
+});
+</script>
 </body>
 </html>
