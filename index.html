@@ -107,34 +107,63 @@
     <p style="max-width: 760px; margin: 0 auto; font-size: 1.15rem;">
         A STEM book that explains how oil refineries work — for curious kids, parents, teachers, and engineers.
     </p>
+
+    <div style="margin-top: 25px;">
+        <p style="font-weight: bold; color: #d97706; margin-bottom: 15px; font-size: 1.1rem;">
+            A 38-page, 10-minute read that puts you ahead of most industry insiders.
+        </p>
+        <a href="https://www.amazon.com/dp/B0GP1XS7KW?tag=fuelingcurios-20"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="btn btn-primary"
+           onclick="if(typeof gtag==='function'){
+             gtag('event','generate_lead',{
+               content_type:'amazon_click',
+               item_id:'hero_cta'
+             });
+             gtag('event','conversion',{
+               send_to:'AW-18046036427/WzU9CJiQ7JEcEMvTgp1D',
+               value:1.0,
+               currency:'USD'
+             });
+           }">
+           📚 Get the Book on Amazon
+        </a>
+        <p style="font-size: 0.95rem; margin-top: 10px; color: #4a5568;">
+            Read for <strong>FREE</strong> with Kindle Unlimited
+        </p>
+    </div>
 </header>
 
 <main class="container">
 
     <section id="activity-pack" class="action-box">
-        <h2>Discover the World Behind the Fuel We Use Every Day</h2>
+        <h2>Discover the World Behind the Fuel</h2>
         <p style="max-width: 760px; margin: 0 auto 18px auto;">
-            Read the book, explore the interactive refinery game, and download free classroom-friendly bonus pages for your aspiring engineers.
+            Grab the book on Amazon, explore the interactive refinery game, or download free classroom-friendly bonus pages for your aspiring engineers.
         </p>
 
         <div class="button-group">
-            <a href="https://www.amazon.com/dp/B0GP1XS7KW?tag=fuelingcurios-20"
-               target="_blank"
-               rel="noopener noreferrer"
-               class="btn btn-primary"
-               onclick="if(typeof gtag==='function'){
-                 gtag('event','generate_lead',{
-                   content_type:'amazon_click',
-                   item_id:'homepage_cta'
-                 });
-                 gtag('event','conversion',{
-                   send_to:'AW-18046036427/WzU9CJiQ7JEcEMvTgp1D',
-                   value:1.0,
-                   currency:'USD'
-                 });
-               }">
-               📚 Get the Book on Amazon
-            </a>
+            <div style="text-align: center; display: flex; flex-direction: column; justify-content: center;">
+                <a href="https://www.amazon.com/dp/B0GP1XS7KW?tag=fuelingcurios-20"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="btn btn-primary"
+                   style="margin-bottom: 15px;"
+                   onclick="if(typeof gtag==='function'){
+                     gtag('event','generate_lead',{
+                       content_type:'amazon_click',
+                       item_id:'midpage_cta'
+                     });
+                     gtag('event','conversion',{
+                       send_to:'AW-18046036427/WzU9CJiQ7JEcEMvTgp1D',
+                       value:1.0,
+                       currency:'USD'
+                     });
+                   }">
+                   📚 Buy on Amazon (Free with KU)
+                </a>
+            </div>
 
             <a href="game.html"
                class="play-game-cta"
@@ -165,7 +194,7 @@
               method="POST"
               target="hidden_iframe"
               onsubmit="handleEmailSubmit()"
-              style="margin-top: 20px;">
+              style="margin-top: 30px; border-top: 1px solid #cbd5e1; padding-top: 20px;">
 
             <p class="email-form-note email-form-note--strong">Want the free STEM activity pack?</p>
 
@@ -203,8 +232,8 @@
             <p>A special “Beyond the ABCs” section dives deeper, explaining how refinery decisions involve tradeoffs between cost, efficiency, and production.</p>
         </div>
         <div class="feature-box">
-            <h3>Real Science</h3>
-            <p>An accurate window into one of the most complex industrial systems in the world—because understanding how things work is the first step toward building what comes next.</p>
+            <h3>Real Science, Fast</h3>
+            <p>Get a window into one of the most complex industrial systems in the world. In just 38 pages and 10 minutes, you'll walk away with a baseline understanding that puts you ahead of many industry insiders.</p>
         </div>
     </section>
 
@@ -289,6 +318,29 @@
                 </a>
             </p>
         </div>
+    </section>
+
+    <section class="action-box" style="margin-top: 40px; border-color: var(--color-orange); background: var(--color-white);">
+        <h2 style="margin-bottom: 15px;">Ready to spark their curiosity?</h2>
+        <a href="https://www.amazon.com/dp/B0GP1XS7KW?tag=fuelingcurios-20"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="btn btn-primary"
+           style="font-size: 1.1rem; padding: 16px 32px;"
+           onclick="if(typeof gtag==='function'){
+             gtag('event','generate_lead',{
+               content_type:'amazon_click',
+               item_id:'footer_cta'
+             });
+             gtag('event','conversion',{
+               send_to:'AW-18046036427/WzU9CJiQ7JEcEMvTgp1D',
+               value:1.0,
+               currency:'USD'
+             });
+           }">
+           📚 Get Fueling Curiosity on Amazon
+        </a>
+        <p style="font-size: 0.95rem; margin-top: 15px; color: var(--color-gray-600);">Available in Paperback &amp; <strong>Free</strong> on Kindle Unlimited</p>
     </section>
 
 </main>
