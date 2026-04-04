@@ -44,31 +44,111 @@
       "aggregateRating": {
         "@type": "AggregateRating",
         "ratingValue": "5",
-        "reviewCount": "3"
+        "reviewCount": "8"
       },
       "review": [
         {
           "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": "Laura K."
+          },
           "reviewRating": {
             "@type": "Rating",
             "ratingValue": "5"
           },
-          "reviewBody": "What a great read. This totally fueled my curiosity in what the refinery is like. It was cool to see how the cracking process worked to separate the oil into different useable fuels. If the book wasn’t enough the game that came along with it was more fun after knowing a bit about the process. I am looking forward to what could be next"
+          "name": "Great book for kids and fun for those who work in this industry",
+          "reviewBody": "This book was the perfect way to show my kids what I do all day at work, the pictures are perfect for kids and the topics are spot on! My 4 year old is so interested in my job at an oil refinery she can name half of the units, and after this book she’s asking even more questions!"
         },
         {
           "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": "Jeremy"
+          },
           "reviewRating": {
             "@type": "Rating",
             "ratingValue": "5"
           },
+          "name": "Great (simplified introductory technical) book",
+          "reviewBody": "I bought this book for my son and he loved it, it made him ask me questions about my job and how it was related to the book, and we ended up having a long conversation as a result. Recommend 100% as a soft introductory book for children with zero knowledge about oil and gas."
+        },
+        {
+          "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": "Brian"
+          },
+          "reviewRating": {
+            "@type": "Rating",
+            "ratingValue": "5"
+          },
+          "name": "Great book for all ages!",
+          "reviewBody": "Such a great little book! The author did a great job of laying out the refining industry in a crystal clear, fun way that will interest kids and adults. The illustrations were great and my kids really enjoyed reading the book. The game that came with it was a very nice touch."
+        },
+        {
+          "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": "Lisa Waters"
+          },
+          "reviewRating": {
+            "@type": "Rating",
+            "ratingValue": "5"
+          },
+          "name": "Great for the curious minds.",
+          "reviewBody": "What a great read. This totally fueled my curiosity in what the refinery is like. It was cool to see how the cracking process worked to separate the oil into different useable fuels. If the book wasn’t enough the game that came along with it was more fun after knowing a bit about the process. I am looking forward to what could be next."
+        },
+        {
+          "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": "Mr B in Dallas"
+          },
+          "reviewRating": {
+            "@type": "Rating",
+            "ratingValue": "5"
+          },
+          "name": "A great, fast read, of how we get so many daily used products. One time through and you get it.",
+          "reviewBody": "The real beauty of the book is the way it lays out the process of how we get from point A to all the different products. It seems to really have a simplicity in it that sticks. I think it will have lasting meaning for all ages groups of the curious."
+        },
+        {
+          "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": "Amazon Customer"
+          },
+          "reviewRating": {
+            "@type": "Rating",
+            "ratingValue": "5"
+          },
+          "name": "Great Book!",
           "reviewBody": "This is an excellent book for children to learn about the science of oil refining. I bought one for my kids, ages 11, 9, and 7. I also purchased one for my son's 5th grade STEM class."
         },
         {
           "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": "Elizabeth J."
+          },
           "reviewRating": {
             "@type": "Rating",
             "ratingValue": "5"
           },
+          "name": "Be Curious and Read It!",
+          "reviewBody": "Such a fun book for kids and adults! Lots of good information and easy to understand. If you have family in the industry or live in a heavy oil and gas town, this is a must read! The section at the back of the book with more information is particularly my favorite."
+        },
+        {
+          "@type": "Review",
+          "author": {
+            "@type": "Person",
+            "name": "Andrew Shows"
+          },
+          "reviewRating": {
+            "@type": "Rating",
+            "ratingValue": "5"
+          },
+          "name": "Highly recommend!",
           "reviewBody": "Amazing book for kids and adults who are curious about the refining industry at a basic level. Highly recommend!"
         }
       ],
@@ -101,7 +181,7 @@
     <img src="FuelingCover.jpg" alt="Fueling Curiosity book cover showing a colorful illustrated refinery with the alphabet letters A through Z">
     <div class="review-badge">
         ⭐⭐⭐⭐⭐
-        <div class="review-badge-text">5-star rated on Amazon</div>
+        <div class="review-badge-text">5-star rated on Amazon • 8 reviews</div>
     </div>
     <h1>Fueling Curiosity: The ABCs of Refining</h1>
     <p style="max-width: 760px; margin: 0 auto; font-size: 1.15rem;">
@@ -110,7 +190,7 @@
 
     <div style="margin-top: 25px;">
         <p style="font-weight: bold; color: #d97706; margin-bottom: 15px; font-size: 1.1rem;">
-            A 38-page, 10-minute read that puts you ahead of most industry insiders.
+            A 38-page, 10-minute read that gives readers a surprisingly strong foundation in how refining works.
         </p>
         <a href="https://www.amazon.com/dp/B0GP1XS7KW?tag=fuelingcurios-20"
            target="_blank"
@@ -177,6 +257,7 @@
                   src="social-preview.jpg"
                   alt="The Great Refinery Run – Interactive Refinery Game"
                   class="play-game-thumb"
+                  loading="lazy"
                 />
                 <span class="btn btn-game play-game-btn">
                   🎮 Play The Great Refinery Run
@@ -202,7 +283,8 @@
 
             <div class="email-form-row">
 
-                <input type="email" name="EMAIL" placeholder="Enter your email" required class="email-input" aria-label="Email address for free STEM activity pack">
+                <label for="email-signup" class="sr-only">Email address</label>
+                <input id="email-signup" type="email" name="EMAIL" placeholder="Enter your email" required class="email-input" aria-label="Email address for free STEM activity pack">
 
                 <div class="honeypot" aria-hidden="true">
                     <input type="text" name="b_02e6b77d4f08f66dcd6e46354_a5e67c4b9a" tabindex="-1" value="">
@@ -233,7 +315,7 @@
         </div>
         <div class="feature-box">
             <h3>Real Science, Fast</h3>
-            <p>Get a window into one of the most complex industrial systems in the world. In just 38 pages and 10 minutes, you'll walk away with a baseline understanding that puts you ahead of many industry insiders.</p>
+            <p>Get a window into one of the most complex industrial systems in the world. In just 38 pages and 10 minutes, you'll walk away with a baseline understanding that most readers never get.</p>
         </div>
     </section>
 
@@ -271,24 +353,28 @@
     <section class="sneak-peek-section" aria-labelledby="reviews-title">
         <h2 id="reviews-title">What Readers Are Saying</h2>
         <p class="section-intro">
-            Early readers are loving the combination of real refinery science, approachable explanations, and the companion game.
+            Readers are loving the combination of real refinery science, approachable explanations, and the companion game.
         </p>
 
         <div class="review-grid">
             <article class="review-card review-card--featured">
                 <div class="review-stars">⭐⭐⭐⭐⭐</div>
-                <p>What a great read. This totally “fueled” my curiosity in what the refinery is like. It was cool to see how the cracking process worked to separate the oil into different useable fuels.</p>
-                <p style="margin-top:12px;">If the book wasn’t enough the game that came along with it was more fun after knowing a bit about the process. I am looking forward to what could be next.</p>
+                <p>This book was the perfect way to show my kids what I do all day at work. The pictures are perfect for kids and the topics are spot on.</p>
+                <p>My 4 year old is so interested in my job at an oil refinery she can name half of the units, and after this book she’s asking even more questions!</p>
+                <p class="review-attribution">— Laura K.</p>
             </article>
 
             <article class="review-card">
                 <div class="review-stars">⭐⭐⭐⭐⭐</div>
-                <p>This is an excellent book for children to learn about the science of oil refining. I bought one for my kids, ages 11, 9, and 7. I also purchased one for my son's 5th grade STEM class.</p>
+                <p>What a great read. This totally “fueled” my curiosity in what the refinery is like. It was cool to see how the cracking process worked to separate the oil into different useable fuels.</p>
+                <p>If the book wasn’t enough, the game that came along with it was even more fun after knowing a bit about the process.</p>
+                <p class="review-attribution">— Lisa Waters</p>
             </article>
 
             <article class="review-card">
                 <div class="review-stars">⭐⭐⭐⭐⭐</div>
                 <p>Amazing book for kids and adults who are curious about the refining industry at a basic level. Highly recommend!</p>
+                <p class="review-attribution">— Andrew Shows</p>
             </article>
         </div>
     </section>
@@ -373,7 +459,7 @@
         setTimeout(function() {
             var btn = document.getElementById('download-submit-btn');
             if (btn) {
-                btn.innerText = "✅ Sent & Opened!";
+                btn.innerText = "✅ Download Opened";
                 btn.style.backgroundColor = "#48bb78";
                 btn.disabled = true;
 
