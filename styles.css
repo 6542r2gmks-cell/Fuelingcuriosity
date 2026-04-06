@@ -7754,3 +7754,21 @@ button,
   transform: scale(1.03);
   box-shadow: 0 12px 28px rgba(0,0,0,0.18);
 }
+.review-badge {
+  display: block;
+  text-align: center;
+  margin: 16px auto 26px auto;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: #fff7e6;
+  color: var(--color-navy);
+  font-weight: 800;
+  border: 1px solid #f1d08a;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  width: fit-content;
+  text-decoration: none;
+}
+
+.review-badge:hover {
+  text-decoration: none;
+}
