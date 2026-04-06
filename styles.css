@@ -7745,3 +7745,12 @@ button,
   font-weight: 700;
   color: var(--color-navy);
 }
+.cover-clickable {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cover-clickable:hover {
+  transform: scale(1.03);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+}
