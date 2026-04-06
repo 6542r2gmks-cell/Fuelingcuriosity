@@ -203,10 +203,24 @@
        alt="Fueling Curiosity book cover showing a colorful illustrated refinery with the alphabet letters A through Z"
        class="cover-clickable">
 </a>
-    <div class="review-badge">
-        ⭐⭐⭐⭐⭐
-        <div class="review-badge-text">5-star rated on Amazon • 8 reviews</div>
-    </div>
+    <a href="https://www.amazon.com/dp/B0GP1XS7KW?tag=fuelingcurios-20"
+   target="_blank"
+   rel="noopener noreferrer"
+   class="review-badge"
+   onclick="if(typeof gtag==='function'){
+     gtag('event','generate_lead',{
+       content_type:'amazon_click',
+       item_id:'review_badge_click'
+     });
+     gtag('event','conversion',{
+       send_to:'AW-18046036427/WzU9CJiQ7JEcEMvTgp1D',
+       value:1.0,
+       currency:'USD'
+     });
+   }">
+    ⭐⭐⭐⭐⭐
+    <div class="review-badge-text">5-star rated on Amazon • 8 reviews</div>
+</a>
     <h1>Fueling Curiosity: The ABCs of Refining</h1>
     <p style="max-width: 760px; margin: 0 auto; font-size: 1.15rem;">
         A STEM book that explains how oil refineries work — for curious kids, parents, teachers, and engineers.
