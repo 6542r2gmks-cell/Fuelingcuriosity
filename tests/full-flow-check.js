@@ -278,7 +278,7 @@ async function main() {
     record('Pump Swap map jump activates screen', pumpSwapActive === 1, `count=${pumpSwapActive}`);
 
     const pumpIntroText = await page.locator('.pump-swap-intro').textContent().catch(() => '');
-    record('Pump swap visible instruction line includes the lettered step map', Boolean(pumpIntroText && ['A', 'B', 'C', 'D', 'E', 'F'].every(step => pumpIntroText.includes(step))), `text=${pumpIntroText}`);
+    record('Pump swap intro frames the scenario and points players to the lettered toggle lights', Boolean(pumpIntroText && /lettered toggle lights/i.test(pumpIntroText) && /seal/i.test(pumpIntroText)), `text=${pumpIntroText}`);
 
     const pumpBadgeTexts = await page.locator('#phase-pump-swap .pump-step-badge').allTextContents().catch(() => []);
     record('Pump swap renders all six step badges on the live controls', ['A', 'B', 'C', 'D', 'E', 'F'].every(step => pumpBadgeTexts.includes(step)), `badges=${pumpBadgeTexts.join(',')}`);
@@ -321,6 +321,10 @@ async function main() {
 
     await page.goto(`http://127.0.0.1:${PORT}/index.html`);
     await page.waitForLoadState('domcontentloaded');
+    const heroGameCtaVisible = await page.locator('.hero-media-card--game .hero-media-cta').isVisible().catch(() => false);
+    record('Homepage hero exposes the integrated game CTA card above the fold', heroGameCtaVisible, '');
+    const heroBookCtaVisible = await page.locator('.hero-media-card--book .hero-media-cta').isVisible().catch(() => false);
+    record('Homepage hero keeps the integrated book CTA card visible', heroBookCtaVisible, '');
     await page.evaluate(() => {
       window.open = () => null;
       const originalSetTimeout = window.setTimeout;
