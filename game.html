@@ -415,9 +415,10 @@
 
 <!-- Pump Swap Minigame -->
 <section id="phase-pump-swap" class="screen pump-swap-screen" aria-labelledby="pump-swap-title">
-    <h2 id="pump-swap-title">Critical Alert: Pump Vibration Rising</h2>
+    <div class="pump-swap-kicker">Hot Swap Challenge</div>
+    <h2 id="pump-swap-title">Pump A Is Shaking Apart</h2>
     <div class="pump-swap-topbar">
-        <p class="pump-swap-intro">🟢 Open Pump B suction, ▶️ start Pump B, 🟢 open Pump B discharge, then ⛔ isolate Pump A.</p>
+        <p class="pump-swap-intro">Reliability just called it in: vibration is spiking fast. Bring Pump B online and pull Pump A out before the seal lets go. Follow the lettered toggle lights to make the swap.</p>
         <button id="pump-procedure-btn" class="btn btn-secondary interactive-element pump-procedure-btn" onclick="Game.showPumpProcedurePopup()">
             Procedure
         </button>
@@ -463,6 +464,7 @@
                         <div id="pump-a-discharge-line" class="pump-flow-line pump-flow-line--vertical" aria-hidden="true"></div>
                         <div class="pump-component-tag">Discharge Valve</div>
                         <button id="btn-a-discharge" class="pump-toggle pump-toggle--switch interactive-element" onclick="Game.togglePumpComponent('A', 'discharge')" aria-pressed="true">
+                            <span class="pump-step-badge" aria-hidden="true">D</span>
                             <span class="pump-toggle-light" aria-hidden="true"></span>
                             <span id="pump-a-discharge-state" class="pump-toggle-state">Open</span>
                         </button>
@@ -479,6 +481,7 @@
                             <div class="pump-body-caption">Vibrating pump</div>
                         </div>
                         <button id="btn-a-motor" class="pump-toggle pump-toggle--switch interactive-element" onclick="Game.togglePumpComponent('A', 'motor')" aria-pressed="true">
+                            <span class="pump-step-badge" aria-hidden="true">E</span>
                             <span class="pump-toggle-light" aria-hidden="true"></span>
                             <span class="pump-toggle-copy">
                                 <span class="pump-toggle-label">Motor</span>
@@ -491,6 +494,7 @@
                         <div id="pump-a-suction-line" class="pump-flow-line pump-flow-line--vertical" aria-hidden="true"></div>
                         <div class="pump-component-tag">Suction Valve</div>
                         <button id="btn-a-suction" class="pump-toggle pump-toggle--switch interactive-element" onclick="Game.togglePumpComponent('A', 'suction')" aria-pressed="true">
+                            <span class="pump-step-badge" aria-hidden="true">F</span>
                             <span class="pump-toggle-light" aria-hidden="true"></span>
                             <span id="pump-a-suction-state" class="pump-toggle-state">Open</span>
                         </button>
@@ -510,6 +514,7 @@
                         <div id="pump-b-discharge-line" class="pump-flow-line pump-flow-line--vertical" aria-hidden="true"></div>
                         <div class="pump-component-tag">Discharge Valve</div>
                         <button id="btn-b-discharge" class="pump-toggle pump-toggle--switch interactive-element" onclick="Game.togglePumpComponent('B', 'discharge')" aria-pressed="false">
+                            <span class="pump-step-badge" aria-hidden="true">C</span>
                             <span class="pump-toggle-light" aria-hidden="true"></span>
                             <span id="pump-b-discharge-state" class="pump-toggle-state">Closed</span>
                         </button>
@@ -526,6 +531,7 @@
                             <div class="pump-body-caption">Standby pump</div>
                         </div>
                         <button id="btn-b-motor" class="pump-toggle pump-toggle--switch interactive-element" onclick="Game.togglePumpComponent('B', 'motor')" aria-pressed="false">
+                            <span class="pump-step-badge" aria-hidden="true">B</span>
                             <span class="pump-toggle-light" aria-hidden="true"></span>
                             <span class="pump-toggle-copy">
                                 <span class="pump-toggle-label">Motor</span>
@@ -538,6 +544,7 @@
                         <div id="pump-b-suction-line" class="pump-flow-line pump-flow-line--vertical" aria-hidden="true"></div>
                         <div class="pump-component-tag">Suction Valve</div>
                         <button id="btn-b-suction" class="pump-toggle pump-toggle--switch interactive-element" onclick="Game.togglePumpComponent('B', 'suction')" aria-pressed="false">
+                            <span class="pump-step-badge" aria-hidden="true">A</span>
                             <span class="pump-toggle-light" aria-hidden="true"></span>
                             <span id="pump-b-suction-state" class="pump-toggle-state">Closed</span>
                         </button>
@@ -561,16 +568,30 @@
         Retry Swap
     </button>
 
+    <div id="pump-dead-overlay" class="pump-dead-overlay" aria-hidden="true">
+        <div class="pump-dead-card" role="dialog" aria-modal="true" aria-labelledby="pump-dead-title" aria-describedby="pump-dead-body">
+            <p class="pump-dead-kicker">Pump Swap Failed</p>
+            <h3 id="pump-dead-title">Swap is down</h3>
+            <p id="pump-dead-body">This run is in a dead state. Restart the swap to try again.</p>
+            <div id="pump-dead-cause" class="pump-dead-cause"></div>
+            <p class="pump-dead-note">Recommendation: read the procedure before restarting.</p>
+            <div class="pump-dead-actions">
+                <button id="pump-dead-restart-btn" class="btn btn-primary interactive-element" type="button" onclick="Game.restartPumpSwapFromDeadState()">Restart Swap</button>
+                <button id="pump-dead-procedure-btn" class="btn btn-secondary interactive-element" type="button" onclick="Game.openPumpProcedureFromDeadState()">Read Procedure</button>
+            </div>
+        </div>
+    </div>
+
     <div id="pump-procedure-overlay" class="pump-procedure-overlay" role="dialog" aria-modal="true" aria-labelledby="pump-procedure-title">
         <div class="pump-procedure-dialog">
             <h3 id="pump-procedure-title">Standard Operating Procedure: Hot Swap</h3>
             <ol class="pump-procedure-list">
-                <li><strong>Open Spare Suction:</strong> Flood the spare pump with liquid to protect the mechanical seals.</li>
-                <li><strong>Start Spare Motor:</strong> Spin up the spare pump against its closed discharge valve.</li>
-                <li><strong>Open Spare Discharge:</strong> Establish forward flow through the spare pump.</li>
-                <li><strong>Close Primary Discharge:</strong> Pinch off the bad pump to prevent fluid from slamming backward.</li>
-                <li><strong>Stop Primary Motor:</strong> Shut down the vibrating equipment.</li>
-                <li><strong>Close Primary Suction:</strong> Fully isolate the bad pump so maintenance can safely pull the casing.</li>
+                <li><span class="pump-procedure-step" aria-hidden="true">A</span><strong>Open Pump B Suction:</strong> Flood the spare pump with liquid to protect the mechanical seals.</li>
+                <li><span class="pump-procedure-step" aria-hidden="true">B</span><strong>Start Pump B Motor:</strong> Spin up the spare pump against its closed discharge valve.</li>
+                <li><span class="pump-procedure-step" aria-hidden="true">C</span><strong>Open Pump B Discharge:</strong> Establish forward flow through the spare pump.</li>
+                <li><span class="pump-procedure-step" aria-hidden="true">D</span><strong>Close Pump A Discharge:</strong> Pinch off the bad pump to prevent fluid from slamming backward.</li>
+                <li><span class="pump-procedure-step" aria-hidden="true">E</span><strong>Stop Pump A Motor:</strong> Shut down the vibrating equipment.</li>
+                <li><span class="pump-procedure-step" aria-hidden="true">F</span><strong>Close Pump A Suction:</strong> Fully isolate the bad pump so maintenance can safely pull the casing.</li>
             </ol>
             <button class="btn interactive-element pump-procedure-close" onclick="Game.closePumpProcedurePopup()">Acknowledge</button>
         </div>

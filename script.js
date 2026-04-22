@@ -915,6 +915,7 @@ function cleanupPumpSwapPhase() {
         pumpGameLoop = null;
     }
     closePumpProcedurePopup();
+    hidePumpDeadOverlay();
 }
 
 function cleanupCokerPhase() {
@@ -6846,12 +6847,17 @@ const pumpComponentMeta = {
     discharge: { onText: 'Open', offText: 'Closed' }
 };
 const pumpUi = {
+    screen: getEl('phase-pump-swap'),
     flowBar: getEl('pump-flow-bar'),
     flowStatus: getEl('pump-flow-status'),
     feedback: getEl('pump-feedback-panel'),
     feedbackTitle: getEl('pump-feedback-title'),
     feedbackBody: getEl('pump-feedback-body'),
     retryButton: getEl('pump-retry-btn'),
+    deadOverlay: getEl('pump-dead-overlay'),
+    deadTitle: getEl('pump-dead-title'),
+    deadBody: getEl('pump-dead-body'),
+    deadCause: getEl('pump-dead-cause'),
     vibrationBar: getEl('pump-a-vib-bar'),
     vibrationText: getEl('pump-a-vib-text'),
     bStateText: getEl('pump-b-state-text'),
@@ -6913,6 +6919,43 @@ function createPumpState(routeContext = DEFAULT_PUMP_SWAP_ROUTE) {
         nextPhase: routeContext.nextPhase,
         failureType: null
     };
+}
+
+function showPumpDeadOverlay(title, detail) {
+    if (pumpUi.deadTitle) pumpUi.deadTitle.textContent = title;
+    if (pumpUi.deadBody) pumpUi.deadBody.textContent = 'This run is in a dead state. Restart the swap to try again.';
+    if (pumpUi.deadCause) pumpUi.deadCause.textContent = detail;
+    if (pumpUi.deadOverlay) {
+        pumpUi.deadOverlay.classList.add('is-open');
+        pumpUi.deadOverlay.setAttribute('aria-hidden', 'false');
+    }
+    if (pumpUi.screen) {
+        pumpUi.screen.classList.add('is-dead');
+    }
+}
+
+function hidePumpDeadOverlay() {
+    if (pumpUi.deadOverlay) {
+        pumpUi.deadOverlay.classList.remove('is-open');
+        pumpUi.deadOverlay.setAttribute('aria-hidden', 'true');
+    }
+    if (pumpUi.screen) {
+        pumpUi.screen.classList.remove('is-dead');
+    }
+}
+
+function restartPumpSwapFromDeadState() {
+    closePumpProcedurePopup();
+    hidePumpDeadOverlay();
+    startPumpSwap({
+        skipShowPhase: true,
+        product: pumpSwapRouteContext.product || DEFAULT_PUMP_SWAP_ROUTE.product,
+        nextPhase: pumpSwapRouteContext.nextPhase || DEFAULT_PUMP_SWAP_ROUTE.nextPhase
+    });
+}
+
+function openPumpProcedureFromDeadState() {
+    showPumpProcedurePopup();
 }
 
 function getPumpFlow(pumpId) {
@@ -7134,6 +7177,7 @@ function initializePumpSwapSession() {
     pumpState = createPumpState(pumpSwapRouteContext);
     state.product = pumpSwapRouteContext.product || DEFAULT_PUMP_SWAP_ROUTE.product;
     closePumpProcedurePopup();
+    hidePumpDeadOverlay();
 
     if (pumpUi.retryButton) {
         pumpUi.retryButton.classList.add('hidden');
@@ -7285,7 +7329,7 @@ function endPumpGame(isWin, failureType, title, detail) {
     pumpState.failureType = isWin ? null : failureType;
 
     if (pumpUi.retryButton) {
-        pumpUi.retryButton.classList.toggle('hidden', isWin);
+        pumpUi.retryButton.classList.add('hidden');
     }
 
     if (pumpUi.pumps.A.container) {
@@ -7294,6 +7338,11 @@ function endPumpGame(isWin, failureType, title, detail) {
 
     updatePumpUI();
     setPumpFeedback(title, detail, isWin ? 'success' : 'error');
+    if (isWin) {
+        hidePumpDeadOverlay();
+    } else {
+        showPumpDeadOverlay(title, detail);
+    }
 
     if (isWin) {
         markUnitComplete('pump-swap');
@@ -7326,6 +7375,7 @@ function getSmokeSnapshot() {
         sulfurAtoms: document.querySelectorAll('#sulfur-container .physics-body').length,
         vacuumAir: document.querySelectorAll('#vac-container .air-molecule').length,
         pumpLoopActive: Boolean(pumpGameLoop),
+        pumpDeadOverlayOpen: Boolean(pumpUi.deadOverlay?.classList.contains('is-open')),
         mapLocked: mapJumpLocked,
         factBrowserActive: factBrowserState.active
     };
@@ -7418,6 +7468,8 @@ window.Game = {
     togglePumpComponent,
     showPumpProcedurePopup,
     closePumpProcedurePopup,
+    restartPumpSwapFromDeadState,
+    openPumpProcedureFromDeadState,
     setupPipeXray,
     setXrayTool,
     __debug: {

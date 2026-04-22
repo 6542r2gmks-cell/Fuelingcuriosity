@@ -277,6 +277,33 @@ async function main() {
     const pumpSwapActive = await page.locator('#phase-pump-swap.active').count();
     record('Pump Swap map jump activates screen', pumpSwapActive === 1, `count=${pumpSwapActive}`);
 
+    const pumpIntroText = await page.locator('.pump-swap-intro').textContent().catch(() => '');
+    record('Pump swap visible instruction line includes the lettered step map', Boolean(pumpIntroText && ['A', 'B', 'C', 'D', 'E', 'F'].every(step => pumpIntroText.includes(step))), `text=${pumpIntroText}`);
+
+    const pumpBadgeTexts = await page.locator('#phase-pump-swap .pump-step-badge').allTextContents().catch(() => []);
+    record('Pump swap renders all six step badges on the live controls', ['A', 'B', 'C', 'D', 'E', 'F'].every(step => pumpBadgeTexts.includes(step)), `badges=${pumpBadgeTexts.join(',')}`);
+
+    await page.evaluate(() => window.Game.togglePumpComponent('B', 'motor'));
+    await page.waitForTimeout(300);
+    const pumpDeadOverlayVisible = await page.locator('#pump-dead-overlay.is-open').count();
+    record('Pump swap dry-start failure opens the dead-state overlay', pumpDeadOverlayVisible === 1, `count=${pumpDeadOverlayVisible}`);
+
+    await page.locator('#pump-dead-procedure-btn').click();
+    await page.waitForTimeout(150);
+    const pumpProcedureVisible = await page.locator('#pump-procedure-overlay.is-open').count();
+    record('Pump dead-state overlay can open the procedure popup', pumpProcedureVisible === 1, `count=${pumpProcedureVisible}`);
+
+    await page.locator('.pump-procedure-close').click();
+    await page.waitForTimeout(150);
+    await page.locator('#pump-dead-restart-btn').click();
+    await page.waitForTimeout(300);
+    const pumpRestartState = await page.evaluate(() => ({
+      deadOpen: document.getElementById('pump-dead-overlay')?.classList.contains('is-open'),
+      pumpLoopActive: Boolean(window.Game.__debug.getSmokeSnapshot().pumpLoopActive),
+      feedback: document.getElementById('pump-feedback-body')?.textContent || ''
+    }));
+    record('Pump dead-state restart starts a fresh swap session', Boolean(pumpRestartState && !pumpRestartState.deadOpen && pumpRestartState.pumpLoopActive), JSON.stringify(pumpRestartState));
+
     await page.evaluate(() => window.Game.mapJump('4', 'gasoline'));
     await page.waitForTimeout(900);
     const phase4Active = await page.locator('#phase-4.active').count();
